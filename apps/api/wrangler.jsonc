@@ -13,7 +13,8 @@
   "vars": {
     // NCBI exige `tool` y `email` en cada petición. Sin ellos limita a 3
     // peticiones/s y puede bloquear la IP. Crossref hace lo propio con `mailto`.
-    // El despliegue falla si alguno queda en PENDIENTE.
+    // El paso "Verificar configuración" del despliegue rechaza los marcadores
+    // sin rellenar en los valores de este archivo.
     "NCBI_TOOL": "evidentia",
     "CONTACT_EMAIL": "david@davidduque.com"
   },
