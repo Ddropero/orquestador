@@ -57,6 +57,26 @@ jobs:
             exit 1
           fi
 
+      # Sin el secret, wrangler falla con "necessary to set a
+      # CLOUDFLARE_API_TOKEN", que parece un fallo del código y no lo es. Se
+      # comprueba antes para que el mensaje diga qué falta y dónde ponerlo.
+      - name: Comprobar credenciales de Cloudflare
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          faltan=""
+          if [ -z "$TOKEN" ]; then faltan="$faltan CLOUDFLARE_API_TOKEN"; fi
+          if [ -z "$ACCOUNT" ]; then faltan="$faltan CLOUDFLARE_ACCOUNT_ID"; fi
+          if [ -n "$faltan" ]; then
+            echo "::error::Faltan secrets en este repositorio:$faltan"
+            echo "Se cargan en Settings → Secrets and variables → Actions."
+            echo "Los secrets NO se heredan entre repositorios: cargarlos en otro"
+            echo "repositorio de la misma cuenta no los hace visibles aquí."
+            exit 1
+          fi
+          echo "✓ Credenciales de Cloudflare presentes"
+
       - name: Aplicar migraciones de D1
         uses: cloudflare/wrangler-action@v3
         with:
