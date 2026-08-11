@@ -1,0 +1,100 @@
+name: deploy
+
+# El despliegue NUNCA es automático al hacer push: exige que los tests pasen y
+# que un humano haya aprobado el merge a main. Para un sistema que informa
+# decisiones clínicas, eso no es burocracia — es el requisito.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Sin `version`: la toma del campo packageManager de package.json, que es
+      # el que generó el lockfile. Fijarla aquí a mano hace que
+      # `--frozen-lockfile` falle en cuanto las dos cifras se separen.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'pnpm' }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  deploy:
+    needs: verify          # sin verde, no se despliega
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      # Sin `version`: la toma del campo packageManager de package.json, que es
+      # el que generó el lockfile. Fijarla aquí a mano hace que
+      # `--frozen-lockfile` falle en cuanto las dos cifras se separen.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'pnpm' }
+      - run: pnpm install --frozen-lockfile
+
+      # Comprueba que la configuración no salió con marcadores sin rellenar.
+      # Desplegar con CONTACT_EMAIL en "PENDIENTE" haría que NCBI nos limite a
+      # 3 peticiones/s y pueda bloquear la IP, y el fallo aparecería mucho después.
+      - name: Verificar configuración
+        run: |
+          if grep -q 'PENDIENTE' apps/api/wrangler.jsonc; then
+            echo "::error::wrangler.jsonc tiene marcadores sin rellenar"
+            grep -n 'PENDIENTE' apps/api/wrangler.jsonc
+            exit 1
+          fi
+
+      - name: Aplicar migraciones de D1
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/api
+          command: d1 migrations apply evidentia --remote
+
+      - name: Desplegar el Worker
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/api
+          command: deploy
+
+      # La URL sale del propio despliegue. Escribirla a mano obliga a conocer el
+      # subdominio workers.dev de la cuenta, y una URL equivocada convierte esta
+      # comprobación en un fallo permanente que no dice nada sobre el Worker.
+      - name: Comprobar que quedó vivo
+        run: |
+          BASE="${{ steps.deploy.outputs.deployment-url }}"
+          if [ -z "$BASE" ]; then BASE="${{ vars.HEALTH_URL_BASE }}"; fi
+          if [ -z "$BASE" ]; then
+            echo "::error::El despliegue no devolvió URL y no hay vars.HEALTH_URL_BASE"
+            exit 1
+          fi
+          echo "worker-url=$BASE" >> "$GITHUB_OUTPUT"
+          echo "URL del worker: $BASE"
+
+          sleep 8
+          for i in 1 2 3 4 5; do
+            code=$(curl -s -o /tmp/health.json -w "%{http_code}" "$BASE/health" || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "✓ health OK"
+              cat /tmp/health.json
+              exit 0
+            fi
+            echo "intento $i: HTTP $code"
+            sleep 6
+          done
+          echo "::error::El worker no responde en /health tras el despliegue"
+          cat /tmp/health.json || true
+          exit 1

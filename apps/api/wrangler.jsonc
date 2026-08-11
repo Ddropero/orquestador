@@ -1,0 +1,62 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "evidentia-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+
+  "observability": {
+    "enabled": true
+  },
+
+  "vars": {
+    // NCBI exige `tool` y `email` en cada petición. Sin ellos limita a 3
+    // peticiones/s y puede bloquear la IP. Crossref hace lo propio con `mailto`.
+    // El despliegue falla si alguno queda en PENDIENTE.
+    "NCBI_TOOL": "evidentia",
+    "CONTACT_EMAIL": "david@davidduque.com"
+  },
+
+  // El orquestador. Una instancia en espera no consume concurrencia ni cómputo,
+  // así que una compuerta humana que tarda dos semanas no cuesta nada.
+  "workflows": [
+    {
+      "name": "evidentia-pipeline",
+      "binding": "PIPELINE",
+      "class_name": "EvidencePipeline"
+    }
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "evidentia",
+      "database_id": "3078191a-52cd-41fe-bf30-b0d530c88ae9",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Los pasos de Workflow devuelven punteros a R2, nunca contenido: el retorno
+  // de un paso topa en 1 MiB y no es configurable.
+  "r2_buckets": [
+    {
+      "binding": "CORPUS",
+      "bucket_name": "evidentia-corpus"
+    }
+  ],
+
+  // Esquema de metadatos CONGELADO: 9 de 10 ranuras, la décima libre a propósito.
+  // Ver packages/core/src/vector-metadata.ts. No se pueden añadir índices
+  // retroactivamente: equivocarse obliga a reindexar el corpus entero.
+  "vectorize": [
+    {
+      "binding": "VECTORS",
+      "index_name": "evidentia-abstracts"
+    }
+  ],
+
+  "ai": {
+    "binding": "AI"
+  }
+}
