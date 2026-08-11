@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "types": ["@cloudflare/workers-types"],
+    "lib": ["ES2022"]
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../../packages/core" },
+    { "path": "../../packages/search" },
+    { "path": "../../packages/sources" },
+    { "path": "../../packages/verify" }
+  ]
+}
