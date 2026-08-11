@@ -45,11 +45,15 @@ jobs:
       # Comprueba que la configuración no salió con marcadores sin rellenar.
       # Desplegar con CONTACT_EMAIL en "PENDIENTE" haría que NCBI nos limite a
       # 3 peticiones/s y pueda bloquear la IP, y el fallo aparecería mucho después.
+      # Solo mira los VALORES, no los comentarios: un comentario que explique qué
+      # es un marcador sin rellenar no es un marcador sin rellenar, y hacer caer
+      # el despliegue por nombrarlo convierte la guarda en una trampa.
       - name: Verificar configuración
         run: |
-          if grep -q 'PENDIENTE' apps/api/wrangler.jsonc; then
+          sin_comentarios=$(grep -vE '^[[:space:]]*//' apps/api/wrangler.jsonc)
+          if printf '%s\n' "$sin_comentarios" | grep -q 'PENDIENTE'; then
             echo "::error::wrangler.jsonc tiene marcadores sin rellenar"
-            grep -n 'PENDIENTE' apps/api/wrangler.jsonc
+            grep -nE 'PENDIENTE' apps/api/wrangler.jsonc | grep -vE ':[[:space:]]*//'
             exit 1
           fi
 
