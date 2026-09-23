@@ -56,7 +56,9 @@
       body: o.cuerpo !== undefined ? JSON.stringify(o.cuerpo) : undefined,
       credentials: "same-origin",
       cache: "no-store",
-      signal: o.signal
+      // Sin plazo, una red caída sin avisar (portal cautivo, DNS mudo) deja las
+      // peticiones colgadas minutos y el punto de conexión en verde.
+      signal: o.signal || AbortSignal.timeout(8000)
     });
   }
 
@@ -198,8 +200,9 @@
       if (!res.ok) {
         marcarRed(res.status === 401 ? "sesion" : "ok");
         return res.json().catch(function(){ return {}; }).then(function(b){
-          if (res.status === 409) { cerrar(); status.textContent = b.mensaje || "Ya hay una consulta en curso."; return; }
-          usarRespaldo((b.error || "El servidor no respondió.") + " Se muestra la respuesta del ensayo.");
+          // 409: el servidor sigue con una consulta anterior que aquí ya se dio por
+          // perdida. Se muestra el ensayo y se le pide al servidor que corte la suya.
+          usarRespaldo((res.status === 409 ? (b.mensaje || "Ya hay una consulta en curso.") : (b.error || "El servidor no respondió.")) + " Se muestra la respuesta del ensayo.");
         });
       }
       marcarRed("ok");
@@ -313,8 +316,7 @@
       if (!res.ok) {
         marcarRed(res.status === 401 ? "sesion" : "ok");
         return res.json().catch(function(){ return {}; }).then(function(b){
-          if (res.status === 409) { cerrar(); status.textContent = b.mensaje || "Ya hay una verificación en curso."; return; }
-          usarRespaldo((b.error || "El servidor no respondió.") + " Se muestran los resultados del ensayo.");
+          usarRespaldo((res.status === 409 ? (b.mensaje || "Ya hay una verificación en curso.") : (b.error || "El servidor no respondió.")) + " Se muestran los resultados del ensayo.");
         });
       }
       marcarRed("ok");
@@ -373,13 +375,14 @@
     listaEstado.appendChild(li);
   }
 
+  var ESTADOS_EVIDENTIA = { queued: "en cola", running: "en marcha", waiting: "en espera", "recién lanzada": "recién lanzada", "ya estaba en curso": "ya estaba en curso" };
   function mostrarEvidentia(ev){
     if (!ev) return;
     evVivo.href = ev.enlace;
     evVivo.hidden = false;
     evEstado.textContent = ev.terminado
-      ? (ev.resultado === "completo" ? "Evidentia terminó." : "Evidentia no terminó: use el resultado del ensayo.")
-      : "Evidentia está trabajando (" + ev.estado + ").";
+      ? (ev.resultado === "completo" ? "Evidentia terminó." : "Evidentia no terminó: abra el resultado del ensayo o, sin red, el PDF guardado en el escritorio.")
+      : "Evidentia está trabajando (" + (ESTADOS_EVIDENTIA[ev.estado] || "en marcha") + ").";
   }
 
   function refrescarEstado(){
@@ -421,7 +424,7 @@
 
   document.getElementById("c-evidentia").onclick = function(){
     var b = this;
-    if (SIN_SERVIDOR) { evEstado.textContent = "Sin conexión: use el resultado del ensayo."; return; }
+    if (SIN_SERVIDOR) { evEstado.textContent = "Sin conexión: abra el PDF del ensayo guardado en el escritorio."; return; }
     b.disabled = true;
     evEstado.textContent = "Enviando la pregunta…";
     api("/api/evidentia/lanzar", { method: "POST", cuerpo: {} }).then(function(r){
@@ -433,7 +436,7 @@
         evEstado.textContent = "No se pudo lanzar (" + (x.d.mensaje || x.d.error || x.r.status) + "). Use el resultado del ensayo.";
       }
     }).catch(function(){
-      evEstado.textContent = "Sin conexión: use el resultado del ensayo.";
+      evEstado.textContent = "Sin conexión: abra el PDF del ensayo guardado en el escritorio.";
     }).then(function(){ b.disabled = false; });
   };
 

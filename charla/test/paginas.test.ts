@@ -18,6 +18,14 @@ function secciones(html: string): string[] {
   return html.split(/<section class="slide/).slice(1).map((s) => s.split('</section>')[0]!);
 }
 
+function notaDe(seccion: string): string {
+  return /data-notes="([^"]*)"/.exec(seccion)?.[1] ?? '';
+}
+
+function sinNota(seccion: string): string {
+  return seccion.replace(/ data-notes="[^"]*"/, '');
+}
+
 function datosEmbebidos(html: string, id: string): any {
   const m = new RegExp(`<script type="application/json" id="${id}">([\\s\\S]*?)</script>`).exec(html);
   if (!m) throw new Error(`sin datos ${id}`);
@@ -25,23 +33,37 @@ function datosEmbebidos(html: string, id: string): any {
 }
 
 describe('/presentador: la presentación portada sin cambios visuales', () => {
-  it('conserva las 18 diapositivas idénticas, salvo el QR (1 y 18) y los enganches del respaldo (3)', () => {
+  it('conserva las 18 diapositivas idénticas, salvo el QR (1 y 18), el contacto (18) y los enganches del respaldo (3)', () => {
     const b = secciones(BASE);
     const p = secciones(PRESENTADOR);
     expect(p).toHaveLength(18);
     p.forEach((s, i) => {
       if (i === 0 || i === 17 || i === 2) return;
-      expect(s).toBe(b[i]);
+      expect(sinNota(s)).toBe(sinNota(b[i]!));
     });
     expect(p[0]).toContain('qr-portada');
     expect(p[17]).toContain('qr-cierre');
     expect(p[17]).not.toContain('[Código QR del kit]');
+    expect(p[17]).not.toContain('[su correo o red social]');
     // En la 3, lo único nuevo son dos botones ocultos y un id.
-    const sin3 = p[2]!
+    const sin3 = sinNota(p[2]!)
       .replace(/\s*<button id="btn-respaldo-claude"[^>]*>[^<]*<\/button>/, '')
       .replace(/\s*<button id="btn-respaldo-pubmed"[^>]*>[^<]*<\/button>/, '')
       .replace(' id="sample-label"', '');
-    expect(sin3).toBe(b[2]);
+    expect(sin3).toBe(sinNota(b[2]!));
+  });
+
+  it('las notas del orador conservan el texto original y solo añaden al final en la 1, la 3 y la 10', () => {
+    const b = secciones(BASE);
+    const p = secciones(PRESENTADOR);
+    p.forEach((s, i) => {
+      const original = notaDe(b[i]!);
+      const nueva = notaDe(s);
+      expect(nueva.startsWith(original)).toBe(true);
+      if ([0, 2, 9].includes(i)) expect(nueva.length).toBeGreaterThan(original.length);
+      else expect(nueva).toBe(original);
+    });
+    expect(notaDe(p[9]!)).toContain('PDF del ensayo');
   });
 
   it('conserva el CSS de la base completo', () => {

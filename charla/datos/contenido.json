@@ -82,18 +82,47 @@
     "Llévese el kit"
   ],
   "kit": {
-    "_nota": "Lo que /vivo ofrece para llevar. Las líneas rojas son las de la diapositiva 16, textuales. Los prompts del kit quedan pendientes del ponente: mientras la lista esté vacía, /vivo no muestra esa sección.",
+    "_nota": "Lo que /vivo ofrece para llevar. Las líneas rojas son las de la diapositiva 16, textuales. Los prompts salen de lo que dice cada diapositiva del paso 01 al 07; el ponente los revisa antes de congelar.",
     "lineasRojas": [
-      { "titulo": "La IA no es autora", "texto": "ICMJE y COPE no la aceptan como autora. Su uso se declara donde lo pida la revista." },
-      { "titulo": "Cero datos identificables", "texto": "Ni nombres, ni documentos, ni fotos de pacientes en herramientas abiertas. Ley 1581 de 2012." },
-      { "titulo": "Ética antes que datos", "texto": "Aval del comité de ética y consentimiento informado, incluido el de las fotografías." },
-      { "titulo": "Si no la abrió, no la cite", "texto": "Cada referencia se verifica en la fuente original, sin excepción." }
+      {
+        "titulo": "La IA no es autora",
+        "texto": "ICMJE y COPE no la aceptan como autora. Su uso se declara donde lo pida la revista."
+      },
+      {
+        "titulo": "Cero datos identificables",
+        "texto": "Ni nombres, ni documentos, ni fotos de pacientes en herramientas abiertas. Ley 1581 de 2012."
+      },
+      {
+        "titulo": "Ética antes que datos",
+        "texto": "Aval del comité de ética y consentimiento informado, incluido el de las fotografías."
+      },
+      {
+        "titulo": "Si no la abrió, no la cite",
+        "texto": "Cada referencia se verifica en la fuente original, sin excepción."
+      }
     ],
     "guias": [
-      { "nombre": "CARE (reporte de caso)", "url": "https://www.equator-network.org/reporting-guidelines/care/" },
-      { "nombre": "STROBE (estudios observacionales)", "url": "https://www.equator-network.org/reporting-guidelines/strobe/" },
-      { "nombre": "PRISMA (revisiones sistemáticas)", "url": "https://www.equator-network.org/reporting-guidelines/prisma/" }
+      {
+        "nombre": "CARE (reporte de caso)",
+        "url": "https://www.equator-network.org/reporting-guidelines/care/"
+      },
+      {
+        "nombre": "STROBE (estudios observacionales)",
+        "url": "https://www.equator-network.org/reporting-guidelines/strobe/"
+      },
+      {
+        "nombre": "PRISMA (revisiones sistemáticas)",
+        "url": "https://www.equator-network.org/reporting-guidelines/prisma/"
+      }
     ],
-    "prompts": []
+    "prompts": [
+      "Paso 01 · Pregunta: «Convierta esta duda clínica en una pregunta PICO (población, intervención, comparador y desenlace) y sugiera palabras clave y términos MeSH para buscarla en PubMed: [su duda].»",
+      "Paso 02 · Búsqueda: «Con esta pregunta PICO, proponga una estrategia de búsqueda booleana para PubMed, con sinónimos y términos MeSH, y explique cómo comprobar en PubMed si ya existe una revisión sistemática sobre la misma pregunta: [PICO].»",
+      "Paso 03 · Lectura: «Usando solo los artículos que le adjunto, compare cómo midió cada uno el desenlace principal y cite el fragmento exacto de donde sale cada dato.»",
+      "Paso 04 · Datos: «Con esta base anonimizada, indique qué prueba estadística corresponde a cada comparación y por qué, escriba el código para ejecutarla y muéstreme cada cifra junto a los datos crudos de los que sale.»",
+      "Paso 05 · Escritura: «Revise mi manuscrito contra la guía [CARE, STROBE o PRISMA] y dígame qué ítems faltan y dónde. No reescriba las conclusiones: son mías.»",
+      "Paso 06 · Revista: «Compare el alcance, los requisitos para autores y el costo de publicación de estas revistas candidatas, y dígame en qué índice oficial debo confirmar que cada una está indexada: [revistas].»",
+      "Paso 07 · Revisores: «Organice estos comentarios de los revisores en una tabla punto por punto y proponga un borrador de respuesta para cada uno, señalando cuáles aceptaría y cuáles exigen un argumento mío: [comentarios].»"
+    ]
   }
 }

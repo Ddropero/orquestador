@@ -162,7 +162,7 @@
         s.appendChild(a);
         li.appendChild(s);
       } else {
-        li.appendChild(el("span", "veredicto", "No existe: no aparece en PubMed por título, DOI ni autor."));
+        li.appendChild(el("span", "veredicto", "No existe: ningún resultado de PubMed por título, DOI ni autor es este artículo."));
       }
       if (consultas[r.n] && consultas[r.n].length) li.appendChild(el("span", "consultas", textoConsultas(consultas[r.n])));
       if (r.fabricada) li.appendChild(el("span", "fabricada", "Ejercicio docente: referencia fabricada a propósito. No la cite."));

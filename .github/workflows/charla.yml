@@ -53,7 +53,10 @@ jobs:
           cache: npm
           cache-dependency-path: charla/package-lock.json
       - run: npm ci
+      # Con CHARLA_DESPLIEGUE=1 la construcción se niega a desplegar sin respaldos grabados.
       - run: npm run construir
+        env:
+          CHARLA_DESPLIEGUE: '1'
       - name: Desplegar el Worker
         id: deploy
         uses: cloudflare/wrangler-action@v3

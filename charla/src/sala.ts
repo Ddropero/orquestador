@@ -227,14 +227,16 @@ export class Sala extends DurableObject<Env> {
     return evento ? json({ ok: true }) : json({ error: 'aviso_vacio' }, 400);
   }
 
-  /** Para empezar la charla limpia después del ensayo. Conserva costos y respaldos grabados. */
+  /**
+   * Para empezar la charla limpia después del ensayo. Conserva costos, respaldos
+   * grabados y la corrida de Evidentia en curso: el ponente la lanza antes de subir
+   * y limpia la sala después; olvidarla lo dejaría sin enlace en la diapositiva 10.
+   */
   private async reiniciar(): Promise<Response> {
     this.claude?.abort('reinicio');
     this.verificacion?.abort('reinicio');
     this.historial = [];
     await this.ctx.storage.put({ historial: [], seq: this.seq });
-    await this.ctx.storage.delete('evidentia');
-    await this.ctx.storage.deleteAlarm();
     for (const ws of this.ctx.getWebSockets()) {
       try {
         // Al reconectar, cada /vivo reconstruye su estado desde el historial vacío.

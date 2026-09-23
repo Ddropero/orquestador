@@ -163,6 +163,11 @@ describe('sin tuteo en ningún texto visible', () => {
 });
 
 describe('el contenido del kit', () => {
+  it('trae un prompt por cada uno de los siete pasos', () => {
+    expect(contenido.kit.prompts).toHaveLength(7);
+    contenido.kit.prompts.forEach((p, i) => expect(p.startsWith(`Paso 0${i + 1} ·`)).toBe(true));
+  });
+
   it('las líneas rojas son las de la diapositiva 16, textuales', () => {
     const s16 = seccionesDe(BASE)[15]!;
     for (const l of contenido.kit.lineasRojas) {

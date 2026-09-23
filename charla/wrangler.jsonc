@@ -31,7 +31,9 @@
   // Límites por IP pensados para cientos de celulares detrás de una misma IP (Wi-Fi
   // del hotel, NAT del operador). Los namespace_id son enteros únicos en la cuenta.
   "ratelimits": [
-    { "name": "LIMITE_LECTURA", "namespace_id": "2026100201", "simple": { "limit": 6000, "period": 60 } },
+    // 600 celulares en sondeo (12/min cada uno) más sus cargas iniciales caben; un
+    // bot desde una sola IP sigue frenado.
+    { "name": "LIMITE_LECTURA", "namespace_id": "2026100201", "simple": { "limit": 20000, "period": 60 } },
     { "name": "LIMITE_WS", "namespace_id": "2026100202", "simple": { "limit": 1500, "period": 60 } },
     { "name": "LIMITE_ENTRADA", "namespace_id": "2026100203", "simple": { "limit": 10, "period": 60 } },
     { "name": "LIMITE_PRESENTADOR", "namespace_id": "2026100204", "simple": { "limit": 240, "period": 60 } }

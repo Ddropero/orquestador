@@ -90,7 +90,11 @@ if (token) {
     d.configuracion.claveAnthropic ? ok('ANTHROPIC_API_KEY configurada') : mal('falta ANTHROPIC_API_KEY');
     d.configuracion.tokenSeguro ? ok('PRESENTER_TOKEN con longitud suficiente') : mal('PRESENTER_TOKEN demasiado corto');
     d.respaldos.claude ? ok(`respaldo de Claude del ${d.respaldos.claude}`) : mal('sin respaldo de Claude grabado');
-    d.respaldos.pubmed ? ok(`respaldo de PubMed del ${d.respaldos.pubmed}`) : mal('sin respaldo de PubMed grabado');
+    // El respaldo de PubMed tiene que salir del ensayo general (29-30 de septiembre), no
+    // de la verificación previa con la que arrancó el repo.
+    d.respaldos.pubmed && d.respaldos.pubmed >= '2026-09-29'
+      ? ok(`respaldo de PubMed del ${d.respaldos.pubmed}`)
+      : mal(d.respaldos.pubmed ? `el respaldo de PubMed (${d.respaldos.pubmed}) no es del ensayo general` : 'sin respaldo de PubMed grabado');
     d.respaldos.evidentia ? ok('respaldo de Evidentia grabado') : mal('sin respaldo de Evidentia grabado');
     d.evidentiaSalud === 'ok' ? ok('Evidentia responde en /health') : mal(`Evidentia: ${d.evidentiaSalud}`);
     console.log(`  Consultas a Claude hoy: ${d.claudeHoy} de ${d.limiteClaudeDiario}. Costo registrado: US$ ${d.costos.usd}.`);

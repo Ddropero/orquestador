@@ -190,6 +190,7 @@ try {
     comprobar(p.status === 200 && (html.match(/<section class="slide/g) ?? []).length === 18, '/presentador con sesión: 18 diapositivas');
     comprobar((p.headers.get('content-security-policy') ?? '').includes("'sha256-"), '/presentador con CSP por hash');
     comprobar(p.headers.get('x-charla-pagina') === 'presentador' && (p.headers.get('cache-control') ?? '').includes('no-store'), '/presentador marcada y sin caché');
+    comprobar((p.headers.get('set-cookie') ?? '').startsWith('presentador-local='), 'abrir /presentador con sesión la renueva (cookie fresca)');
     const d = await get('/presentador/descargar', { headers: { cookie } });
     comprobar(d.status === 200 && (d.headers.get('content-disposition') ?? '').includes('attachment'), '/presentador/descargar entrega el archivo');
     await writeFile(path.join(tmp, 'sin-red.html'), await d.text());
@@ -467,6 +468,17 @@ try {
     comprobar(primer429 !== null && primer429 <= 11, primer429 ? `el intento ${primer429} de entrar con token equivocado ya recibe 429` : 'el límite de la entrada no actuó en 14 intentos');
     const publico = await get('/vivo');
     comprobar(publico.status === 200, 'el límite de la entrada no afecta a /vivo');
+    // Un vecino de Wi-Fi que agota el cupo no deja fuera al ponente: el token correcto entra igual.
+    const correcto = await get('/presentador/entrar', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' },
+      body: `token=${encodeURIComponent(TOKEN)}`,
+    });
+    comprobar(correcto.status === 303 && (correcto.headers.get('set-cookie') ?? '').startsWith('presentador-local='), 'con el cupo agotado, el token correcto sigue entrando');
+    const bearerAgotado = await get('/api/presentador/estado', { headers: { authorization: 'Bearer otro-token-largo-que-no-es-el-bueno' } });
+    comprobar(bearerAgotado.status === 429, 'con el cupo agotado, un Bearer equivocado recibe 429');
+    const bearerBueno = await get('/api/presentador/estado', { headers: { authorization: `Bearer ${TOKEN}` } });
+    comprobar(bearerBueno.status === 200, 'y el Bearer correcto sigue entrando');
   }
 
   const relevantes = erroresConsola.filter((e) => !/favicon|status of 401/i.test(e));

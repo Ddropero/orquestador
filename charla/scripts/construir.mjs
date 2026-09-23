@@ -87,8 +87,9 @@ const ESTILOS_CHARLA = `
   .qr-vivo p{ font-size:clamp(12px,1.5vw,18px); line-height:1.35; }
   .qr-vivo b{ font-weight:600; }
   #stage > .slide:first-child{ position:relative; }
-  .qr-portada{ position:absolute; right:clamp(20px,5vw,72px); bottom:clamp(64px,8vh,88px); }
-  .qr-portada .qr{ width:clamp(96px,14vh,150px); height:auto; }
+  /* Grande y lejos del borde: la esquina es lo primero que recorta un proyector. */
+  .qr-portada{ position:absolute; right:clamp(48px,7vw,110px); bottom:clamp(110px,16vh,180px); }
+  .qr-portada .qr{ width:clamp(140px,24vh,260px); height:auto; }
   .qr-portada p{ color:var(--deep-body); max-width:15em; }
   .qr-portada b{ color:var(--deep-ink); }
   .qr-cierre .qr{ width:clamp(140px,26vh,260px); height:auto; border:1px solid var(--line); }
@@ -123,7 +124,7 @@ const CONTROLES = `
   <section><h4>Estado</h4><ul id="c-estado"><li>Comprobando…</li></ul></section>
   <section>
     <h4>Evidentia</h4>
-    <p>Lance la pregunta de la miel antes de subir a la tarima: tarda entre 2 y 8 minutos.</p>
+    <p>Lance la pregunta de la miel antes de subir a la tarima: tarda entre 2 y 8 minutos. Sin red, ninguno de los dos enlaces abre: use el PDF del ensayo guardado en el escritorio.</p>
     <div class="fila"><button id="c-evidentia" type="button">Lanzar la pregunta de la miel</button></div>
     <p id="c-evidentia-estado"></p>
     <p><a id="c-evidentia-vivo" target="_blank" rel="noopener" hidden>Abrir el resultado en vivo</a></p>
@@ -137,12 +138,27 @@ const CONTROLES = `
   </section>
   <section>
     <h4>Sin red</h4>
-    <p>Si el portátil se queda sin red, esta pestaña sigue funcionando y las demos muestran los resultados del ensayo. Para tener además una copia en el disco:</p>
+    <p>Si el portátil se queda sin red, esta pestaña sigue funcionando: Claude y PubMed muestran los resultados del ensayo, y para Evidentia queda el PDF guardado en el ensayo. Para tener además una copia en el disco:</p>
     <p><a href="/presentador/descargar">Descargar la presentación para abrirla sin red</a></p>
     <form method="post" action="/presentador/salir"><button class="ghost" type="submit">Cerrar la sesión</button></form>
   </section>
 </div>
 `;
+
+/** Final exacto de la nota original de cada diapositiva que recibe un añadido. */
+const NOTAS_ANCLA = {
+  1: 'Antes de subir, lance la pregunta en Evidentia.">',
+  3: 'Si algo falla, quedan las capturas del ensayo.">',
+  10: 'Muestre el fragmento que respalda cada referencia y la marca de no revisado por un humano.">',
+};
+
+export function notasExtra(textoUrl) {
+  return {
+    1: `Invite a escanear el QR o a escribir ${textoUrl}; pulse C y confirme que el panel muestra público conectado.`,
+    3: 'Con el sistema: pulse el primer botón y, mientras el modelo responde, lea la lista en forma corta; una sola votación (¿cuántas de las cinco existen?); después el segundo botón. Si a los 8 s no llega nada aparece el botón del ensayo; a los 25 s el respaldo entra solo.',
+    10: 'Sin red, ninguno de los enlaces de Evidentia abre: use el PDF del ensayo guardado en el escritorio.',
+  };
+}
 
 async function construirPresentador({ contenido, config, respaldos, urlVivo }) {
   let html = await leer('base/charla-ia-investigacion.html');
@@ -172,6 +188,14 @@ async function construirPresentador({ contenido, config, respaldos, urlVivo }) {
     '      <p style="color:var(--soft)">[Código QR del kit]</p>',
     `      <div class="qr-vivo qr-cierre">${svg}<p>El kit y las demostraciones, en su celular<br><b>${textoUrl}</b></p></div>`,
   );
+  html = unaVez(html, '[su correo o red social]', config.contacto);
+
+  // Notas del orador: lo que cambia por tener el sistema en vivo. Se añaden al final
+  // de la nota original de la diapositiva; las notas no se proyectan.
+  for (const [n, extra] of Object.entries(notasExtra(textoUrl))) {
+    const marca = NOTAS_ANCLA[n];
+    html = unaVez(html, marca, `${marca.slice(0, -2)} ${extra}">`);
+  }
 
   // 3. La diapositiva de la demo: mismos elementos, con los enganches del respaldo.
   html = unaVez(
@@ -298,6 +322,11 @@ export async function construir() {
   if (!respaldos.claude) avisos.push('No hay respuesta de Claude grabada (datos/respaldos.json → claude).');
   if (!respaldos.pubmed) avisos.push('No hay resultados de PubMed grabados (datos/respaldos.json → pubmed).');
   if (!respaldos.evidentia) avisos.push('No hay resultado de Evidentia grabado (datos/respaldos.json → evidentia).');
+  // Un despliegue sin respaldos no llega a producción por descuido: `npm run deploy`
+  // pone CHARLA_DESPLIEGUE=1. Antes del ensayo general, CHARLA_SIN_RESPALDOS=1 lo permite a sabiendas.
+  if (avisos.length && process.env.CHARLA_DESPLIEGUE === '1' && process.env.CHARLA_SIN_RESPALDOS !== '1') {
+    throw new Error(`${avisos.join(' ')} Para desplegar antes del ensayo general: CHARLA_SIN_RESPALDOS=1 npm run deploy`);
+  }
   return { urlVivo, bytesPresentador: Buffer.byteLength(html), avisos };
 }
 

@@ -8,7 +8,16 @@
  */
 var CACHE = "presentador-v1";
 
-self.addEventListener("install", function(){ self.skipWaiting(); });
+// Al instalarse guarda ya la página: si no, la primera visita del día no queda en
+// caché y una recarga sin red no tendría nada que abrir.
+self.addEventListener("install", function(e){
+  self.skipWaiting();
+  e.waitUntil(caches.open(CACHE).then(function(cache){
+    return fetch("/presentador", { credentials: "include" }).then(function(res){
+      if (res.ok && res.headers.get("x-charla-pagina") === "presentador") return cache.put("/presentador", res);
+    }).catch(function(){});
+  }));
+});
 self.addEventListener("activate", function(e){ e.waitUntil(self.clients.claim()); });
 
 self.addEventListener("fetch", function(e){

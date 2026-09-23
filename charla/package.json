@@ -27,7 +27,7 @@
     "test": "npm run construir && vitest run",
     "build": "npm run construir && wrangler deploy --dry-run --outdir dist",
     "dev": "npm run construir && wrangler dev --var LOCAL:1",
-    "deploy": "npm run construir && wrangler deploy",
+    "deploy": "CHARLA_DESPLIEGUE=1 npm run construir && wrangler deploy",
     "e2e": "npm run construir && node scripts/e2e.mjs",
     "respaldos:grabar": "node scripts/grabar-respaldos.mjs",
     "preflight": "node scripts/preflight.mjs"

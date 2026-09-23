@@ -87,7 +87,7 @@ async function enrutar(request: Request, env: Env): Promise<Response> {
   const local = env.LOCAL === '1' || esLocal(url);
 
   // Nada viaja sin cifrar: la cookie del presentador y el token dependen de ello.
-  if (false && url.protocol === 'http:' && !local) {
+  if (url.protocol === 'http:' && !local) {
     url.protocol = 'https:';
     return redirigir(url.toString(), 301);
   }
@@ -104,7 +104,7 @@ async function enrutar(request: Request, env: Env): Promise<Response> {
 
     if (ruta === '/api/salud') {
       if (!(await permitido(env.LIMITE_LECTURA, `lectura:${ip}`))) return demasiadas();
-      return json({ estado: 'ok', host: url.hostname, proto: url.protocol, hostHeader: request.headers.get('host') });
+      return json({ estado: 'ok' });
     }
 
     if (ruta === '/api/sala/estado' && metodo === 'GET') {
@@ -131,7 +131,14 @@ async function enrutar(request: Request, env: Env): Promise<Response> {
   // -------------------------------------------------------------- presentador
   if (ruta === '/presentador' && metodo === 'GET') {
     const quien = await identificar(request, env.PRESENTER_TOKEN, Date.now(), local);
-    return quien ? servirPresentador(env, url, false) : servirEntrada(env, url);
+    if (!quien) return servirEntrada(env, url);
+    // Renovación deslizante: abrir /presentador con sesión válida da tres días
+    // frescos, para que la entrada del ensayo no venza en mitad de la charla.
+    const renovada: Record<string, string> =
+      quien.via === 'cookie' && tokenUtilizable(env.PRESENTER_TOKEN)
+        ? { 'set-cookie': cookieSesion((await firmarSesion(env.PRESENTER_TOKEN, Date.now())).valor, local) }
+        : {};
+    return servirPresentador(env, url, false, renovada);
   }
 
   if (ruta === '/presentador/descargar' && metodo === 'GET') {
@@ -154,8 +161,12 @@ async function enrutar(request: Request, env: Env): Promise<Response> {
 
     const quien = await identificar(request, env.PRESENTER_TOKEN, Date.now(), local);
     if (!quien) {
-      // Cada intento fallido cuenta contra la IP: adivinar el token no sale gratis.
-      if (!(await permitido(env.LIMITE_ENTRADA, `entrada:${ip}`))) return demasiadas();
+      // Solo los Bearer fallidos gastan el cupo de adivinanzas (10/min por IP). Una
+      // cookie inválida es una sesión vencida, no una adivinanza: no gasta el cupo
+      // del propio ponente, que comparte la IP del auditorio.
+      if (request.headers.has('authorization') && !(await permitido(env.LIMITE_ENTRADA, `entrada:${ip}`))) {
+        return demasiadas();
+      }
       return error(401, 'Solo el presentador puede usar esta ruta.');
     }
     if (quien.via === 'cookie' && metodo !== 'GET' && !mismoOrigen(request)) {
@@ -203,10 +214,11 @@ async function servirEntrada(env: Env, url: URL): Promise<Response> {
   );
 }
 
-async function servirPresentador(env: Env, url: URL, descargar: boolean): Promise<Response> {
+async function servirPresentador(env: Env, url: URL, descargar: boolean, extra: Record<string, string> = {}): Promise<Response> {
   const res = await env.ASSETS.fetch(new URL('/_privado/presentador.html', url.origin));
   if (!res.ok) return error(500, 'Falta construir la página del presentador (npm run construir).');
   return conCabeceras(res, {
+    ...extra,
     'content-security-policy': CSP_PRESENTADOR,
     'cache-control': 'no-store, private',
     'x-robots-tag': 'noindex',
@@ -218,7 +230,6 @@ async function servirPresentador(env: Env, url: URL, descargar: boolean): Promis
 }
 
 async function entrar(request: Request, env: Env, url: URL, ip: string): Promise<Response> {
-  if (!(await permitido(env.LIMITE_ENTRADA, `entrada:${ip}`))) return demasiadas();
   if (!mismoOrigen(request)) return error(403, 'Origen no permitido.');
   if (!tokenUtilizable(env.PRESENTER_TOKEN)) {
     console.error(JSON.stringify({ evento: 'token_presentador_ausente_o_corto' }));
@@ -234,6 +245,10 @@ async function entrar(request: Request, env: Env, url: URL, ip: string): Promise
     candidato = null;
   }
   if (!(await tokenValido(candidato, env.PRESENTER_TOKEN))) {
+    // Solo los intentos fallidos gastan el cupo: un vecino de Wi-Fi con diez envíos
+    // vacíos por minuto no deja fuera al ponente, que comparte la IP del auditorio.
+    // Con un token de 24 caracteres o más, adivinarlo cuesta más que la charla.
+    if (!(await permitido(env.LIMITE_ENTRADA, `entrada:${ip}`))) return demasiadas();
     console.warn(JSON.stringify({ evento: 'entrada_fallida' }));
     return redirigir('/presentador?error=1');
   }
