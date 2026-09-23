@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Del caso clínico al PubMed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F3EC; --card:#FFFDF8; --ink:#0F1B2D; --body:#3F4A5A; --soft:#626A78;
+    --gold:#7A5A1E; --glow:#C9A45C; --line:#E4DDCC; --surround:#E3DCCC; --alert:#A63D2A;
+    --deep:#0F1B2D; --deep-ink:#F6F3EC; --deep-body:#BFC8D6;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --surround:#0A121D; }
+  }
+  :root[data-theme="dark"]{ --surround:#0A121D; }
+  *,*::before,*::after{ box-sizing:inherit; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background:var(--surround); color:var(--ink);
+    font-family:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,Arial,sans-serif;
+    -webkit-text-size-adjust:100%;
+  }
+  html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+  .deck{ height:100%; display:flex; flex-direction:column; }
+  .stage{ flex:1; min-height:0; display:flex; }
+  .slide{
+    display:none; flex:1; min-width:0; flex-direction:column; justify-content:center;
+    gap:clamp(14px,2.2vh,28px); background:var(--paper);
+    padding:clamp(20px,4.5vw,64px) clamp(20px,5vw,72px) clamp(64px,8vh,88px);
+    overflow-y:auto;
+  }
+  .slide.active{ display:flex; }
+  .slide.dark{ background:var(--deep); color:var(--deep-ink); }
+  .eyebrow{
+    font-size:clamp(11px,1.5vw,15px); font-weight:600; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--gold); margin:0;
+  }
+  .dark .eyebrow{ color:var(--glow); }
+  h1,h2,h3{ font-family:'Source Serif 4',Georgia,serif; font-weight:600; margin:0; }
+  h1{ font-size:clamp(30px,6.4vw,76px); line-height:1.05; }
+  h2{ font-size:clamp(22px,4.2vw,50px); line-height:1.15; }
+  h3{ font-size:clamp(16px,2.4vw,30px); line-height:1.2; }
+  p,li{ font-size:clamp(14px,2.1vw,24px); line-height:1.45; color:var(--body); margin:0; }
+  .dark p,.dark li{ color:var(--deep-body); }
+  .lead{ font-size:clamp(16px,2.8vw,32px); color:var(--body); }
+  .ink{ color:var(--ink); }
+  .dark .ink{ color:var(--deep-ink); }
+  .alert{ color:var(--alert); }
+  ul,ol{ margin:0; padding-left:1.2em; display:flex; flex-direction:column; gap:.4em; }
+  .stack{ display:flex; flex-direction:column; gap:clamp(8px,1.4vh,16px); }
+  .grid{ display:grid; gap:clamp(10px,1.6vw,22px); grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr)); }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:clamp(14px,1.9vw,28px); display:flex; flex-direction:column; gap:.45em; }
+  .dark .card{ background:#16263D; border:none; border-left:5px solid var(--glow); }
+  .pill{ display:inline-block; font-size:clamp(11px,1.4vw,15px); font-weight:600; color:var(--gold);
+    background:#EFE7D6; border-radius:999px; padding:5px 14px; align-self:flex-start; }
+  .tools{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .tools span{ font-size:clamp(11px,1.4vw,15px); color:var(--ink); background:#EAE3D3; border-radius:999px; padding:5px 14px; }
+  .tools em{ font-style:normal; font-size:clamp(11px,1.4vw,15px); color:var(--soft); }
+  .two{ display:grid; gap:clamp(10px,1.6vw,22px); grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); }
+  .box-dark{ background:var(--deep); color:var(--deep-ink); border-radius:14px; padding:clamp(14px,1.9vw,28px);
+    display:flex; flex-direction:column; gap:.5em; }
+  .box-dark p{ color:var(--deep-ink); }
+  .box-dark .eyebrow{ color:var(--glow); }
+  .chain{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .chain b{ background:var(--card); border:1px solid var(--line); border-radius:999px;
+    padding:6px 16px; font-size:clamp(11px,1.5vw,17px); font-weight:600; color:var(--ink); }
+  .statement{ background:#C9A45C; }
+  .statement h2,.statement p{ color:#0F1B2D; }
+  .center{ text-align:left; }
+  .rule{ width:120px; height:3px; background:var(--glow); border:0; margin:0; }
+  /* demo */
+  .refs{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px; }
+  .refs li{ background:var(--card); border:1px solid var(--line); border-left:4px solid var(--line);
+    border-radius:12px; padding:clamp(10px,1.3vw,18px); font-size:clamp(12px,1.55vw,18px); line-height:1.4; }
+  .refs .num{ font-weight:600; color:var(--gold); }
+  .refs a{ color:var(--gold); }
+  .verdict{ display:block; margin-top:6px; font-size:clamp(11px,1.35vw,15px); font-weight:600; }
+  .ok{ color:#2F6B3A; } .no{ color:var(--alert); } .wait{ color:var(--soft); font-weight:500; }
+  .actions{ display:flex; flex-wrap:wrap; gap:10px; }
+  button{ font:inherit; font-size:clamp(12px,1.5vw,17px); font-weight:600; cursor:pointer;
+    border-radius:999px; padding:10px 20px; border:1px solid var(--ink); background:var(--ink); color:var(--paper); }
+  button.ghost{ background:transparent; color:var(--ink); }
+  button[disabled]{ opacity:.45; cursor:not-allowed; }
+  .out{ background:var(--card); border:1px dashed var(--gold); border-radius:12px;
+    padding:clamp(12px,1.6vw,20px); font-size:clamp(12px,1.55vw,18px); line-height:1.5; color:var(--body);
+    white-space:pre-wrap; max-height:32vh; overflow-y:auto; }
+  .out-label{ font-size:clamp(10px,1.3vw,14px); font-weight:600; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--alert); }
+  /* chrome */
+  .bar{ position:fixed; left:0; right:0; bottom:0; display:flex; gap:10px; align-items:center;
+    justify-content:center; padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));
+    background:color-mix(in srgb,var(--paper) 88%,transparent); border-top:1px solid var(--line); }
+  .bar button{ padding:7px 16px; font-size:14px; }
+  .count{ font-size:13px; color:var(--soft); min-width:64px; text-align:center; }
+  .notes{ display:none; position:fixed; left:0; right:0; bottom:calc(52px + env(safe-area-inset-bottom,0px));
+    max-height:38vh; overflow-y:auto; background:var(--deep); color:var(--deep-body);
+    padding:16px 18px; font-size:15px; line-height:1.5; }
+  .notes.show{ display:block; }
+  .notes b{ color:var(--glow); }
+</style>
+</head>
+<body>
+<div class="deck">
+  <div class="stage" id="stage">
+
+    <!-- 1 -->
+    <section class="slide dark" data-notes="<b>0:00–0:30.</b> Preséntese en una frase y plantee la promesa: en 20 minutos, cómo usar la IA para llegar a la residencia con un trabajo publicado que puedan defender. Antes de subir, lance la pregunta en Evidentia.">
+      <p class="eyebrow">IV Simposio de Actualización en Cirugía Plástica · 2 de octubre de 2026</p>
+      <h1 class="ink">Del caso clínico al PubMed</h1>
+      <p class="lead" style="color:var(--deep-body)">IA para investigar y publicar antes de la residencia</p>
+      <hr class="rule">
+      <p class="ink" style="font-weight:600">David Fernando Duque-Ropero, MD</p>
+      <p style="color:#8E9AAE">Cirugía Plástica · Universidad Nacional de Colombia</p>
+    </section>
+
+    <!-- 2 -->
+    <section class="slide" data-notes="<b>0:30–1:00.</b> Anuncie el ejercicio y diga en voz alta que la lista se generó a propósito para imitar a un chatbot sin acceso a bases de datos. La lección no cambia: el patrón es el mismo.">
+      <p class="eyebrow">Demostración en vivo · 1 de 2</p>
+      <h2 class="ink">¿Cuáles de estas cinco existen?</h2>
+      <div class="grid">
+        <div class="card"><h3 class="ink">1. Una IA propone</h3><p>Cinco referencias sobre manejo de la gripa en adultos.</p></div>
+        <div class="card"><h3 class="ink">2. Ustedes votan</h3><p>A mano alzada, referencia por referencia.</p></div>
+        <div class="card"><h3 class="ink">3. PubMed decide</h3><p>Búsqueda por título, DOI y autor, en pantalla.</p></div>
+      </div>
+    </section>
+
+    <!-- 3 DEMO -->
+    <section class="slide" id="demo" data-notes="<b>1:00–3:00.</b> Lea las cinco y pida manos por cada una. Luego use el primer botón: el modelo responde sin búsqueda y el público ve qué hace con un artículo que no existe. Después el segundo botón: verificación real contra PubMed. Si algo falla, quedan las capturas del ensayo.">
+      <p class="eyebrow">Referencias sobre: manejo de la gripa (influenza) en adultos</p>
+      <ol class="refs" id="refs"></ol>
+      <div class="actions">
+        <button id="btn-sample" disabled>Pedirle a Claude el resumen de la n.º 1</button>
+        <button id="btn-verify" class="ghost" disabled>Verificar las cinco en PubMed</button>
+      </div>
+      <div class="stack" id="sample-wrap" hidden>
+        <p class="out-label">Respuesta del modelo · sin verificar</p>
+        <div class="out" id="sample-out"></div>
+      </div>
+      <p id="demo-status" class="wait" style="font-size:clamp(11px,1.4vw,15px)">Conectando…</p>
+    </section>
+
+    <!-- 4 -->
+    <section class="slide" data-notes="<b>3:00–3:15.</b> Una pausa antes de leerla. Es la regla que sostiene toda la charla.">
+      <h1 class="alert">Si no la abrió, no la cite.</h1>
+    </section>
+
+    <!-- 5 -->
+    <section class="slide" data-notes="<b>3:15–4:00.</b> Pase a una pregunta de la especialidad: la misma que lanzó en Evidentia mientras lo presentaban. Explique el PICO en treinta segundos y anuncie que el resultado se verá en el paso 02.">
+      <p class="eyebrow">Demostración en vivo · 2 de 2</p>
+      <h2 class="ink">La misma duda, bien hecha</h2>
+      <p class="lead" style="font-family:'Source Serif 4',Georgia,serif; font-style:italic">«¿Miel o sulfadiazina de plata para las quemaduras superficiales?»</p>
+      <div class="grid">
+        <div class="card"><h3 class="ink">P · Pacientes</h3><p>Quemadura de espesor parcial superficial</p></div>
+        <div class="card"><h3 class="ink">I · Intervención</h3><p>Apósito de miel</p></div>
+        <div class="card"><h3 class="ink">C · Comparador</h3><p>Sulfadiazina de plata</p></div>
+        <div class="card"><h3 class="ink">O · Desenlace</h3><p>Días hasta la epitelización completa</p></div>
+      </div>
+      <p>En segundo plano, Evidentia ya busca y verifica esta misma pregunta.</p>
+    </section>
+
+    <!-- 6 -->
+    <section class="slide statement" data-notes="<b>4:00–4:45.</b> El comité de selección pregunta por el diseño, las limitaciones y por qué esa prueba estadística. La IA sirve para aprender a responder eso, no para esquivarlo.">
+      <p class="eyebrow" style="color:#0F1B2D">Antes de empezar</p>
+      <h2>En la entrevista de residencia le van a preguntar por su artículo.</h2>
+      <p class="lead" style="color:#2A3547">Si no lo puede defender, se nota. La IA sirve para hacerlo mejor, no para fingirlo.</p>
+    </section>
+
+    <!-- 7 -->
+    <section class="slide" data-notes="<b>4:45–6:00.</b> Lo realista para un médico general. Recalque que una revisión no necesita pacientes, solo método, y que el póster es la puerta de entrada: este simposio tiene concurso.">
+      <p class="eyebrow">Cuatro puertas de entrada</p>
+      <h2 class="ink">Lo que sí puede publicar hoy</h2>
+      <div class="grid">
+        <div class="card"><h3 class="ink">Reporte de caso</h3><p>Un paciente inusual, bien documentado.</p><span class="pill">Guía CARE</span></div>
+        <div class="card"><h3 class="ink">Serie de casos</h3><p>Varios pacientes, con aval de ética.</p><span class="pill">STROBE o PROCESS</span></div>
+        <div class="card"><h3 class="ink">Revisión sistemática o de alcance</h3><p>Sin pacientes, pero con método estricto.</p><span class="pill">PRISMA</span></div>
+        <div class="card"><h3 class="ink">Póster</h3><p>La vía más rápida para empezar.</p><span class="pill">Resumen estructurado</span></div>
+      </div>
+    </section>
+
+    <!-- 8 -->
+    <section class="slide dark" data-notes="<b>6:00–6:30.</b> Presente el mapa completo. Todo el flujo tiene una sola regla, que se repite en cada diapositiva: la IA propone, usted verifica.">
+      <p class="eyebrow">El flujo completo</p>
+      <h2 class="ink">Siete pasos, un mismo caso</h2>
+      <div class="chain">
+        <b>01 Pregunta</b><b>02 Búsqueda</b><b>03 Lectura</b><b>04 Datos</b><b>05 Escritura</b><b>06 Revista</b><b>07 Revisores</b>
+      </div>
+      <p>Caso guía: miel frente a sulfadiazina de plata en quemaduras superficiales. En cada paso, <span style="color:var(--glow); font-weight:600">la IA propone y usted verifica.</span></p>
+    </section>
+
+    <!-- 9 -->
+    <section class="slide" data-notes="<b>6:30–7:30.</b> Una buena pregunta vale más que cualquier herramienta. Muestre el prompt que usó y cómo se descarta una pregunta que ya tiene respuesta sólida.">
+      <p class="eyebrow">Paso 01 de 07 · Pregunta</p>
+      <h2 class="ink">De la duda a una pregunta PICO</h2>
+      <div class="two">
+        <div class="box-dark"><p class="eyebrow">La IA propone</p><p>Convierte su duda clínica en formato PICO y sugiere palabras clave y términos MeSH.</p></div>
+        <div class="card"><p class="eyebrow">Usted verifica</p><p>Decide si la pregunta es relevante, factible con sus recursos y si todavía no está respondida.</p></div>
+      </div>
+      <p><b style="color:var(--gold)">En el caso guía:</b> P quemadura superficial · I apósito de miel · C sulfadiazina de plata · O días hasta epitelizar.</p>
+      <div class="tools"><em>Herramientas:</em><span>Claude</span><span>ChatGPT</span><span>MeSH de PubMed</span></div>
+    </section>
+
+    <!-- 10 -->
+    <section class="slide" data-notes="<b>7:30–8:45.</b> Aquí se cierra el círculo con la demostración del inicio. Cambie a Evidentia: ya debería haber terminado. Muestre el fragmento que respalda cada referencia y la marca de no revisado por un humano.">
+      <p class="eyebrow">Paso 02 de 07 · Búsqueda</p>
+      <h2 class="ink">Buscar sin inventar referencias</h2>
+      <div class="two">
+        <div class="box-dark"><p class="eyebrow">La IA propone</p><p>Arma la estrategia booleana, encuentra artículos relacionados y muestra si otros autores apoyan o contradicen cada hallazgo.</p></div>
+        <div class="card"><p class="eyebrow">Usted verifica</p><p>Corre la búsqueda en PubMed, abre cada artículo y confirma que ninguno esté retractado.</p></div>
+      </div>
+      <p><b style="color:var(--gold)">Paso cero:</b> antes de buscar, compruebe si la revisión ya existe. La pregunta de la miel ya tiene cuatro publicadas.</p>
+      <div class="tools"><em>Herramientas:</em><span>PubMed</span><span>Elicit</span><span>Consensus</span><span>Scite</span><span>Evidentia</span></div>
+    </section>
+
+    <!-- 11 -->
+    <section class="slide" data-notes="<b>8:45–9:45.</b> Una herramienta anclada a sus propios PDF responde desde esos documentos, no desde lo que cree saber. Aun así, los métodos se leen completos.">
+      <p class="eyebrow">Paso 03 de 07 · Lectura</p>
+      <h2 class="ink">Leer con la fuente al lado</h2>
+      <div class="two">
+        <div class="box-dark"><p class="eyebrow">La IA propone</p><p>Resume y compara sus PDF, y cada respuesta señala el fragmento del artículo de donde sale.</p></div>
+        <div class="card"><p class="eyebrow">Usted verifica</p><p>Lee completos los métodos y los resultados. Un resumen nunca reemplaza el artículo.</p></div>
+      </div>
+      <p><b style="color:var(--gold)">En el caso guía:</b> carga los ensayos encontrados y pregunta cómo midió cada uno la epitelización.</p>
+      <div class="tools"><em>Herramientas:</em><span>NotebookLM</span><span>Claude</span></div>
+    </section>
+
+    <!-- 12 -->
+    <section class="slide" data-notes="<b>9:45–11:45.</b> Su ejemplo real: cómo audita el manuscrito de un residente recalculando la estadística desde la base cruda, y cómo aparecen cifras que no cuadran.">
+      <p class="eyebrow">Paso 04 de 07 · Datos</p>
+      <h2 class="ink">Analizar datos sin ser estadístico</h2>
+      <div class="two">
+        <div class="box-dark"><p class="eyebrow">La IA propone</p><p>Sugiere la prueba adecuada, escribe el código del análisis y lo ejecuta sobre su base.</p></div>
+        <div class="card"><p class="eyebrow">Usted verifica</p><p>Revisa cada cifra contra los datos crudos y entiende por qué esa prueba y no otra.</p></div>
+      </div>
+      <p><b style="color:var(--gold)">Si hace su propia serie:</b> la base entra anonimizada y el código queda guardado para reproducir el análisis.</p>
+      <div class="tools"><em>Herramientas:</em><span>Claude</span><span>ChatGPT</span><span>R</span><span>Python</span></div>
+    </section>
+
+    <!-- 13 -->
+    <section class="slide" data-notes="<b>11:45–12:45.</b> El orden importa: primero escribe el autor, después la IA revisa. Si el borrador lo escribe la IA, en la entrevista no lo va a poder defender.">
+      <p class="eyebrow">Paso 05 de 07 · Escritura</p>
+      <h2 class="ink">Escribir primero, pulir después</h2>
+      <div class="two">
+        <div class="box-dark"><p class="eyebrow">La IA propone</p><p>Revisa su borrador contra la guía que corresponde, señala los vacíos y mejora el inglés.</p></div>
+        <div class="card"><p class="eyebrow">Usted verifica</p><p>Escribe el primer borrador. Las ideas, los datos y las conclusiones son suyos.</p></div>
+      </div>
+      <p><b style="color:var(--gold)">En el caso guía:</b> «Revise mi manuscrito contra PRISMA y dígame qué ítems faltan y dónde».</p>
+      <div class="tools"><em>Herramientas:</em><span>Red EQUATOR</span><span>CARE</span><span>STROBE</span><span>PRISMA</span></div>
+    </section>
+
+    <!-- 14 -->
+    <section class="slide" data-notes="<b>12:45–14:00.</b> Una publicación en una revista depredadora puede restar en lugar de sumar. Pida que siempre confirmen la indexación en la página oficial del índice, no en la de la revista.">
+      <p class="eyebrow">Paso 06 de 07 · Revista</p>
+      <h2 class="ink">Elegir revista sin caer en trampas</h2>
+      <div class="two">
+        <div class="box-dark"><p class="eyebrow">La IA propone</p><p>Compara el alcance, los requisitos y el costo de publicación de varias revistas candidatas.</p></div>
+        <div class="card"><p class="eyebrow">Usted verifica</p><p>Confirma la indexación en la fuente oficial y descarta las revistas depredadoras.</p></div>
+      </div>
+      <p><b style="color:var(--gold)">Señales de alarma:</b> lo invitan por correo, prometen aceptarlo en días y cobran sin revisión real.</p>
+      <div class="tools"><em>Herramientas:</em><span>Scimago</span><span>Scopus</span><span>Publindex</span><span>Think. Check. Submit.</span></div>
+    </section>
+
+    <!-- 15 -->
+    <section class="slide" data-notes="<b>14:00–15:00.</b> Los rechazos y las revisiones mayores son parte del proceso. La IA ahorra horas organizando la respuesta, pero el tono y los argumentos los decide el autor.">
+      <p class="eyebrow">Paso 07 de 07 · Revisores</p>
+      <h2 class="ink">Responder a los revisores</h2>
+      <div class="two">
+        <div class="box-dark"><p class="eyebrow">La IA propone</p><p>Ordena los comentarios en una tabla punto por punto y propone borradores de respuesta.</p></div>
+        <div class="card"><p class="eyebrow">Usted verifica</p><p>Decide qué acepta y qué refuta, con argumentos y con referencias que sí leyó.</p></div>
+      </div>
+      <p><b style="color:var(--gold)">Regla:</b> si un revisor señala una limitación real, se reconoce en el manuscrito; no se maquilla.</p>
+      <div class="tools"><em>Herramientas:</em><span>Claude</span><span>ChatGPT</span></div>
+    </section>
+
+    <!-- 16 -->
+    <section class="slide dark" data-notes="<b>15:00–17:15.</b> En cirugía plástica las fotos son el punto más sensible: nunca se suben fotos identificables a una herramienta abierta y siempre debe haber consentimiento específico para publicarlas.">
+      <p class="eyebrow">Lo que no se negocia</p>
+      <h2 class="ink">Cuatro líneas rojas</h2>
+      <div class="grid">
+        <div class="card"><h3 style="color:var(--deep-ink)">La IA no es autora</h3><p>ICMJE y COPE no la aceptan como autora. Su uso se declara donde lo pida la revista.</p></div>
+        <div class="card"><h3 style="color:var(--deep-ink)">Cero datos identificables</h3><p>Ni nombres, ni documentos, ni fotos de pacientes en herramientas abiertas. Ley 1581 de 2012.</p></div>
+        <div class="card"><h3 style="color:var(--deep-ink)">Ética antes que datos</h3><p>Aval del comité de ética y consentimiento informado, incluido el de las fotografías.</p></div>
+        <div class="card"><h3 style="color:var(--deep-ink)">Si no la abrió, no la cite</h3><p>Cada referencia se verifica en la fuente original, sin excepción.</p></div>
+      </div>
+    </section>
+
+    <!-- 17 -->
+    <section class="slide dark" data-notes="<b>17:15–18:00.</b> Haga una pausa antes de leerla. La IA es la mejor herramienta que han tenido para investigar, siempre que cada paso pase por su criterio.">
+      <hr class="rule">
+      <h1 class="ink">La IA acelera.</h1>
+      <h2 style="color:var(--glow)">El criterio sigue siendo suyo.</h2>
+    </section>
+
+    <!-- 18 -->
+    <section class="slide" data-notes="<b>18:00–20:00.</b> Deje esta diapositiva en pantalla mientras responde preguntas. Si el tiempo está justo, acorte la votación de la demostración inicial.">
+      <p class="eyebrow">Para llevar</p>
+      <h2 class="ink">Llévese el kit</h2>
+      <ul>
+        <li>Prompts listos para cada paso, del PICO a la carta al editor</li>
+        <li>La lista de las cuatro líneas rojas</li>
+        <li>Enlaces a las guías CARE, STROBE y PRISMA</li>
+      </ul>
+      <p><b class="ink">Preguntas:</b> [su correo o red social]</p>
+      <p style="color:var(--soft)">[Código QR del kit]</p>
+    </section>
+
+  </div>
+</div>
+
+<div class="notes" id="notes"></div>
+<div class="bar">
+  <button class="ghost" id="prev">←</button>
+  <span class="count" id="count">1 / 18</span>
+  <button class="ghost" id="next">→</button>
+  <button class="ghost" id="toggle-notes">Notas</button>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var notesBox = document.getElementById("notes");
+  var count = document.getElementById("count");
+  var i = 0;
+
+  function show(n){
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function(s, k){ s.classList.toggle("active", k === i); });
+    count.textContent = (i + 1) + " / " + slides.length;
+    notesBox.innerHTML = slides[i].getAttribute("data-notes") || "";
+    if (location.hash !== "#" + (i + 1)) history.replaceState(null, "", "#" + (i + 1));
+    slides[i].scrollTop = 0;
+  }
+  document.getElementById("prev").onclick = function(){ show(i - 1); };
+  document.getElementById("next").onclick = function(){ show(i + 1); };
+  document.getElementById("toggle-notes").onclick = function(){ notesBox.classList.toggle("show"); };
+  document.addEventListener("keydown", function(e){
+    if (e.target && /input|textarea/i.test(e.target.tagName)) return;
+    if (e.key === "ArrowRight" || e.key === "PageDown") { show(i + 1); }
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") { show(i - 1); }
+    else if (e.key.toLowerCase() === "n") { notesBox.classList.toggle("show"); }
+  });
+  var start = parseInt((location.hash || "").replace("#", ""), 10);
+  show(isNaN(start) ? 0 : start - 1);
+
+  /* ---------- demo ---------- */
+  var REFS = [
+    {
+      cita: "Lindqvist HM, Okafor CE, Barreiro-Santos L, Whitcombe RJ, Doucet AL, Varga P. Early oseltamivir and time to return to work in adults with influenza: a randomized controlled trial. Clin Infect Dis. 2023;77(9):1285-1293.",
+      doi: "10.1093/cid/ciad1893",
+      qTitulo: 'oseltamivir[Title] AND "return to work"[Title]',
+      qAutor: 'Lindqvist[Author] AND oseltamivir[Title/Abstract]'
+    },
+    {
+      cita: "Hayden FG, Sugaya N, Hirotsu N, Lee N, de Jong MD, Hurt AC, et al. Baloxavir Marboxil for Uncomplicated Influenza in Adults and Adolescents. N Engl J Med. 2018;379(10):913-923.",
+      doi: "10.1056/NEJMoa1716197",
+      qTitulo: 'baloxavir[Title] AND uncomplicated[Title] AND adolescents[Title]',
+      qAutor: 'Hayden FG[Author] AND baloxavir[Title/Abstract]'
+    },
+    {
+      cita: "Moreau-Quintana A, Berglund TE, Adeyemi FO, Castillo-Ruiz J, Whitlock HD. Paracetamol or ibuprofen for symptom relief in adults with influenza: a prospective cohort study. J Infect. 2021;83(3):352-359.",
+      doi: "10.1016/j.jinf.2021.06.041",
+      qTitulo: '(paracetamol[Title] OR ibuprofen[Title]) AND influenza[Title] AND adults[Title]',
+      qAutor: 'Moreau-Quintana[Author] AND influenza[Title/Abstract]'
+    },
+    {
+      cita: "Jefferson T, Jones MA, Doshi P, Del Mar CB, Hama R, Thompson MJ, et al. Neuraminidase inhibitors for preventing and treating influenza in adults and children. Cochrane Database Syst Rev. 2014;2014(4):CD008965.",
+      doi: "10.1002/14651858.CD008965.pub4",
+      qTitulo: 'neuraminidase[Title] AND inhibitors[Title] AND preventing[Title] AND treating[Title]',
+      qAutor: 'Jefferson T[Author] AND neuraminidase[Title]'
+    },
+    {
+      cita: "Ferreira-Mendes P, Haugland IK, Castellanos MR, O'Dowd SJ, Rautio EM. Symptomatic treatments for adults with influenza-like illness: a systematic review and network meta-analysis. Lancet Infect Dis. 2022;22(11):1621-1630.",
+      doi: "10.1016/S1473-3099(22)00614-5",
+      qTitulo: 'symptomatic[Title] AND "influenza-like illness"[Title] AND "network meta-analysis"[Title]',
+      qAutor: 'Ferreira-Mendes[Author] AND influenza[Title/Abstract]'
+    }
+  ];
+
+  var list = document.getElementById("refs");
+  REFS.forEach(function(r, k){
+    var li = document.createElement("li");
+    var t = document.createElement("span");
+    t.innerHTML = '<span class="num">' + (k + 1) + '.</span> ';
+    li.appendChild(t);
+    li.appendChild(document.createTextNode(r.cita + " "));
+    var a = document.createElement("a");
+    a.href = "https://doi.org/" + r.doi;
+    a.target = "_blank"; a.rel = "noopener";
+    a.textContent = "doi:" + r.doi;
+    li.appendChild(a);
+    var v = document.createElement("span");
+    v.className = "verdict wait"; v.id = "v" + k;
+    li.appendChild(v);
+    list.appendChild(li);
+  });
+
+  var status = document.getElementById("demo-status");
+  var btnSample = document.getElementById("btn-sample");
+  var btnVerify = document.getElementById("btn-verify");
+  var sampleWrap = document.getElementById("sample-wrap");
+  var sampleOut = document.getElementById("sample-out");
+  var sampleNs = null, mcpNs = null, ready = 0;
+
+  function settle(){
+    ready++;
+    if (ready < 2) return;
+    var falta = [];
+    if (!sampleNs) falta.push("Claude");
+    if (!mcpNs) falta.push("PubMed");
+    status.textContent = falta.length === 0
+      ? "Claude y PubMed disponibles en esta vista."
+      : "No disponible en esta vista: " + falta.join(" y ") + ". Abra la página desde claude.ai con su sesión iniciada.";
+  }
+
+  if (typeof window.claude !== "undefined" && window.claude && window.claude.use) {
+    window.claude.use("sample").then(function(ns){
+      sampleNs = ns; if (ns) btnSample.disabled = false; settle();
+    }).catch(function(){ settle(); });
+    window.claude.use("mcp").then(function(ns){
+      mcpNs = ns; if (ns) btnVerify.disabled = false; settle();
+    }).catch(function(){ settle(); });
+  } else {
+    status.textContent = "Vista sin capacidades: la lista se puede leer, pero los botones solo funcionan dentro de claude.ai.";
+  }
+
+  btnSample.onclick = function(){
+    if (!sampleNs) return;
+    btnSample.disabled = true;
+    sampleWrap.hidden = false;
+    sampleOut.textContent = "Pensando…";
+    var prompt = "Resuma en cuatro o cinco líneas los métodos y los resultados principales de este artículo. Responda en español.\n\n" +
+      REFS[0].cita + " doi:" + REFS[0].doi;
+    sampleNs(prompt, {
+      modelTier: "default",
+      onText: function(ev){ sampleOut.textContent = ev.text; }
+    }).then(function(res){
+      sampleOut.textContent = res.text;
+      btnSample.disabled = false;
+    }).catch(function(err){
+      var code = err && err.code;
+      if (code === "not_granted") { sampleWrap.hidden = true; status.textContent = "Claude no fue autorizado en esta vista."; }
+      else if (code === "rate_limited") { sampleOut.textContent = "Límite alcanzado. Espere unos segundos y vuelva a intentarlo."; }
+      else { sampleOut.textContent = (err && err.text) ? err.text : "No se pudo obtener la respuesta."; }
+      btnSample.disabled = false;
+    });
+  };
+
+  function buscar(q){
+    return mcpNs.callTool("PubMed", "search_articles", { query: q, max_results: 5 })
+      .then(function(res){
+        var p = res && res.payload;
+        if (typeof p === "string") { try { p = JSON.parse(p); } catch (e) { p = null; } }
+        if (!p) return { total: 0, pmids: [] };
+        return { total: p.total_count || 0, pmids: p.pmids || [] };
+      });
+  }
+
+  function mensajeError(err){
+    var code = err && err.code;
+    if (code === "needs_reauth") return "Vuelva a conectar PubMed en claude.ai.";
+    if (code === "server_not_connected" || code === "selection_required") return "PubMed no está conectado en esta cuenta.";
+    if (code === "not_granted" || code === "not_in_manifest") return "PubMed no fue autorizado en esta vista.";
+    if (code === "rate_limited" || code === "server_unavailable") return "PubMed no respondió. Intente de nuevo.";
+    if (code === "tool_error") return "PubMed reportó un error: " + (err.message || "");
+    return "No se pudo consultar PubMed.";
+  }
+
+  btnVerify.onclick = function(){
+    if (!mcpNs) return;
+    btnVerify.disabled = true;
+    var k = 0;
+    function siguiente(){
+      if (k >= REFS.length) { btnVerify.disabled = false; return; }
+      var r = REFS[k], celda = document.getElementById("v" + k);
+      celda.className = "verdict wait";
+      celda.textContent = "Buscando en PubMed…";
+      buscar(r.qTitulo).then(function(porTitulo){
+        if (porTitulo.total > 0) return { hallazgo: porTitulo, via: "título" };
+        return buscar('"' + r.doi + '"[aid]').then(function(porDoi){
+          if (porDoi.total > 0) return { hallazgo: porDoi, via: "DOI" };
+          return buscar(r.qAutor).then(function(porAutor){
+            return porAutor.total > 0 ? { hallazgo: porAutor, via: "autor" } : null;
+          });
+        });
+      }).then(function(res){
+        if (res) {
+          var pmid = res.hallazgo.pmids[0];
+          celda.className = "verdict ok";
+          celda.innerHTML = "Aparece en PubMed por " + res.via + " · PMID " +
+            '<a href="https://pubmed.ncbi.nlm.nih.gov/' + pmid + '/" target="_blank" rel="noopener">' + pmid + "</a>";
+        } else {
+          celda.className = "verdict no";
+          celda.textContent = "Sin resultados por título, DOI ni autor.";
+        }
+      }).catch(function(err){
+        celda.className = "verdict wait";
+        celda.textContent = mensajeError(err);
+      }).then(function(){
+        k++;
+        setTimeout(siguiente, 150);
+      });
+    }
+    siguiente();
+  };
+})();
+</script>
+</body>
+</html>

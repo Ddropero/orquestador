@@ -1,0 +1,7 @@
+node_modules/
+public/
+dist/
+src/generado/
+.wrangler/
+.dev.vars
+test-results/

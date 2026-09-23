@@ -1,0 +1,8 @@
+{
+  "_nota": "urlPublica es la que va en el QR. Cambiarla exige volver a construir y desplegar. evidentiaUrl usa workers.dev a propósito: evidentia.davidduque.com está detrás del desafío antibot de la zona.",
+  "urlPublica": "https://charla.davidduque.com",
+  "evidentiaUrl": "https://evidentia-api.ddropero.workers.dev",
+  "modelo": "claude-sonnet-5",
+  "precioUsdPorMillon": { "entrada": 2, "salida": 10 },
+  "limiteClaudeDiario": 40
+}

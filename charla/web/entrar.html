@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<title>Presentador · Del caso clínico al PubMed</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/entrar.css">
+</head>
+<body>
+<main>
+  <p class="eyebrow">Del caso clínico al PubMed</p>
+  <h1>Acceso del presentador</h1>
+  <p>Esta página controla las demostraciones de la charla. Si usted llegó desde el código QR, la página del público es <a href="/vivo">/vivo</a>.</p>
+  <p class="error" id="error" hidden>El token no es válido o se hicieron demasiados intentos. Espere un minuto y vuelva a intentarlo.</p>
+  <form method="post" action="/presentador/entrar" id="formulario">
+    <label for="token">Token del presentador</label>
+    <input type="password" id="token" name="token" autocomplete="current-password" required minlength="24" maxlength="512">
+    <button type="submit">Entrar</button>
+  </form>
+</main>
+<script src="/entrar.js"></script>
+</body>
+</html>

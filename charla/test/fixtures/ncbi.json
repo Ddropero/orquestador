@@ -1,0 +1,32 @@
+{
+  "_nota": "Respuestas de PubMed para las 15 consultas de la demo, tomadas el 23 de septiembre de 2026 con el conector de PubMed (search_articles y get_article_metadata). La consulta por autor de la ref. 3 simula el caso en que NCBI no encuentra un término y lo quita de la búsqueda: el código debe tratarla como cero resultados.",
+  "esearch": {
+    "oseltamivir[Title] AND \"return to work\"[Title]": { "count": 0, "ids": [] },
+    "\"10.1093/cid/ciad1893\"[aid]": { "count": 0, "ids": [] },
+    "Lindqvist[Author] AND oseltamivir[Title/Abstract]": { "count": 0, "ids": [] },
+    "baloxavir[Title] AND uncomplicated[Title] AND adolescents[Title]": { "count": 2, "ids": ["38088961", "30184455"] },
+    "\"10.1056/NEJMoa1716197\"[aid]": { "count": 1, "ids": ["30184455"] },
+    "Hayden FG[Author] AND baloxavir[Title/Abstract]": { "count": 15, "ids": ["42306964", "41102614", "38706384", "34363859", "34245250"] },
+    "(paracetamol[Title] OR ibuprofen[Title]) AND influenza[Title] AND adults[Title]": { "count": 1, "ids": ["12749506"] },
+    "\"10.1016/j.jinf.2021.06.041\"[aid]": { "count": 0, "ids": [] },
+    "Moreau-Quintana[Author] AND influenza[Title/Abstract]": { "count": 152340, "ids": ["40000001", "40000002"], "phrasesnotfound": ["Moreau-Quintana[Author]"] },
+    "neuraminidase[Title] AND inhibitors[Title] AND preventing[Title] AND treating[Title]": { "count": 13, "ids": ["25658541", "25055075", "24718923", "23062090", "22513907"] },
+    "\"10.1002/14651858.CD008965.pub4\"[aid]": { "count": 1, "ids": ["24718923"] },
+    "Jefferson T[Author] AND neuraminidase[Title]": { "count": 13, "ids": ["32328654", "27347711", "27246259", "26954053", "25658541"] },
+    "symptomatic[Title] AND \"influenza-like illness\"[Title] AND \"network meta-analysis\"[Title]": { "count": 0, "ids": [] },
+    "\"10.1016/S1473-3099(22)00614-5\"[aid]": { "count": 0, "ids": [] },
+    "Ferreira-Mendes[Author] AND influenza[Title/Abstract]": { "count": 0, "ids": [] }
+  },
+  "esummary": {
+    "38088961": { "title": "Prospective observational study of baloxavir marboxil in adults and adolescents with uncomplicated influenza from China.", "doi": "10.3389/fmicb.2023.1292735" },
+    "30184455": { "title": "Baloxavir Marboxil for Uncomplicated Influenza in Adults and Adolescents.", "doi": "10.1056/NEJMoa1716197" },
+    "12749506": { "title": "A multicenter, randomized, double-blind, double-dummy, placebo- and active-controlled, parallel-group comparison of diclofenac-K and ibuprofen for the treatment of adults with influenza-like symptoms.", "doi": "10.1016/s0149-2918(03)80088-7" },
+    "25658541": { "title": "Commentary on Cochrane review of neuraminidase inhibitors for preventing and treating influenza in healthy adults and children.", "doi": "10.1016/j.cmi.2014.10.011" },
+    "24718923": { "title": "Neuraminidase inhibitors for preventing and treating influenza in adults and children.", "doi": "10.1002/14651858.CD008965.pub4" },
+    "25055075": { "title": "Artículo simulado sin relación con la cita." },
+    "23062090": { "title": "Artículo simulado sin relación con la cita." },
+    "22513907": { "title": "Artículo simulado sin relación con la cita." },
+    "40000001": { "title": "Artículo simulado de influenza sin relación con la cita." },
+    "40000002": { "title": "Artículo simulado de influenza sin relación con la cita." }
+  }
+}
