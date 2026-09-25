@@ -54,7 +54,7 @@ npm test            # construye y corre las pruebas unitarias
 npm run e2e         # wrangler dev + simuladores de NCBI, Anthropic y Evidentia + Chromium
 
 npx wrangler login
-npx wrangler secret put PRESENTER_TOKEN     # 24 caracteres o más; con menos, nadie entra
+npx wrangler secret put PRESENTER_TOKEN     # 12 caracteres o más, al azar: openssl rand -hex 6
 npx wrangler secret put ANTHROPIC_API_KEY
 npx wrangler secret put NCBI_API_KEY        # opcional: 10 peticiones/s en vez de 3
 CHARLA_SIN_RESPALDOS=1 npm run deploy       # el primer despliegue, antes de grabar los respaldos
