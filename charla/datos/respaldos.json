@@ -1,0 +1,54 @@
+{
+  "_nota": "Respaldos para cuando falle la red o la API. Se regeneran en el ensayo general con `npm run respaldos:grabar` y se vuelven a desplegar. El sello de fecha de cada bloque es la fecha que ve el público en la etiqueta.",
+  "claude": null,
+  "pubmed": {
+    "fecha": "2026-09-23",
+    "origen": "Verificación previa del 23 de septiembre de 2026 con las mismas cinco consultas por título, DOI y autor, hecha con el conector de PubMed de claude.ai, y confirmación de cada resultado contra el DOI y el título citados. Reemplazar en el ensayo general.",
+    "referencias": [
+      {
+        "ref": 1,
+        "consultas": [
+          { "via": "título", "resultados": 0, "coincide": false },
+          { "via": "DOI", "resultados": 0, "coincide": false },
+          { "via": "autor", "resultados": 0, "coincide": false }
+        ],
+        "existe": false
+      },
+      {
+        "ref": 2,
+        "consultas": [
+          { "via": "título", "resultados": 2, "coincide": true }
+        ],
+        "existe": true,
+        "pmid": "30184455"
+      },
+      {
+        "ref": 3,
+        "consultas": [
+          { "via": "título", "resultados": 1, "coincide": false },
+          { "via": "DOI", "resultados": 0, "coincide": false },
+          { "via": "autor", "resultados": 0, "coincide": false }
+        ],
+        "existe": false
+      },
+      {
+        "ref": 4,
+        "consultas": [
+          { "via": "título", "resultados": 13, "coincide": true }
+        ],
+        "existe": true,
+        "pmid": "24718923"
+      },
+      {
+        "ref": 5,
+        "consultas": [
+          { "via": "título", "resultados": 0, "coincide": false },
+          { "via": "DOI", "resultados": 0, "coincide": false },
+          { "via": "autor", "resultados": 0, "coincide": false }
+        ],
+        "existe": false
+      }
+    ]
+  },
+  "evidentia": null
+}

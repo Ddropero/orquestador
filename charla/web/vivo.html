@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<title>En vivo · Del caso clínico al PubMed</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/vivo.css">
+</head>
+<body>
+<header class="cabecera">
+  <p class="eyebrow">IV Simposio de Actualización en Cirugía Plástica · Bogotá</p>
+  <h1>Del caso clínico al PubMed <span class="envivo">en vivo</span></h1>
+  <p class="lema">La IA propone, usted verifica.</p>
+  <p class="conexion" id="conexion" role="status">Conectando…</p>
+</header>
+
+<main>
+  <section class="tarjeta" id="diapositiva" aria-live="polite">
+    <p class="eyebrow">Diapositiva actual</p>
+    <p class="diapo"><b id="diapo-n">–</b> <span id="diapo-total"></span></p>
+    <p class="diapo-titulo" id="diapo-titulo">La charla todavía no ha empezado.</p>
+  </section>
+
+  <section class="tarjeta" id="resumen" hidden>
+    <h2>Lo que respondió el modelo, sin buscar</h2>
+    <div class="caja-ia">
+      <p class="sello">Texto generado por IA sin verificar · Ejercicio docente: resume la referencia 1 de la lista, por verificar en PubMed · No es evidencia clínica</p>
+      <p class="sello sello-ensayo" id="resumen-ensayo" hidden>Respuesta de ensayo</p>
+      <p class="texto-ia" id="resumen-texto"></p>
+      <p class="sello sello-fin" id="resumen-veredicto" hidden>La referencia 1 no existe: este resumen describe un artículo inventado.</p>
+    </div>
+  </section>
+
+  <section class="tarjeta" id="referencias" hidden>
+    <h2>¿Cuáles de las cinco existen?</h2>
+    <p class="docente">Ejercicio docente: referencias fabricadas a propósito</p>
+    <p class="nota">Cada referencia aparece aquí solo cuando PubMed ya dio su veredicto.</p>
+    <ol class="refs" id="refs"></ol>
+  </section>
+
+  <section class="tarjeta" id="evidentia" hidden>
+    <h2>Evidentia: ¿miel o sulfadiazina de plata?</h2>
+    <p class="nota">Etapas del sistema. Lo mismo, paso a paso, lo puede hacer usted con PubMed, Elicit, Consensus o Scite. El resultado no ha sido revisado por un humano y no es una recomendación clínica.</p>
+    <ol class="etapas" id="etapas"></ol>
+  </section>
+
+  <section class="tarjeta" id="avisos" hidden>
+    <h2>Mensajes del ponente</h2>
+    <ul class="avisos" id="lista-avisos"></ul>
+  </section>
+
+  <section class="tarjeta" id="linea">
+    <h2>Lo que hace la IA, paso a paso</h2>
+    <ol class="linea" id="linea-eventos"></ol>
+    <p class="vacio" id="linea-vacia">Todavía no ha empezado ninguna demostración.</p>
+  </section>
+
+  <section class="tarjeta" id="kit">
+    <h2>Para llevar</h2>
+    <h3>Cuatro líneas rojas</h3>
+    <ul class="lineas-rojas" id="lineas-rojas"></ul>
+    <h3>Guías de reporte</h3>
+    <ul class="guias" id="guias"></ul>
+    <div id="prompts-kit" hidden>
+      <h3>Prompts para cada paso</h3>
+      <ul class="prompts" id="prompts"></ul>
+    </div>
+  </section>
+</main>
+
+<footer class="pie">
+  <p>Página de solo lectura. No guarda datos de quien la abre.</p>
+  <p>Las referencias fabricadas de esta página son material docente: no las cite.</p>
+</footer>
+
+<script type="application/json" id="datos-vivo">__DATOS_VIVO__</script>
+<script src="/vivo.js"></script>
+</body>
+</html>

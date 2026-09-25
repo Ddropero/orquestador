@@ -1,0 +1,53 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "charla-caso-clinico",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Se mantienen las dos vías. Declarar `routes` apaga workers.dev salvo que se pida:
+  // si el dominio propio queda detrás del desafío antibot de la zona davidduque.com,
+  // workers.dev sigue funcionando y sirve de plan B para el QR.
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "charla.davidduque.com", "custom_domain": true }
+  ],
+
+  // Todo pasa primero por el Worker: así /presentador y public/_privado/ nunca se
+  // sirven sin comprobar la sesión.
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "none",
+    "not_found_handling": "none"
+  },
+
+  "durable_objects": {
+    "bindings": [{ "name": "SALA", "class_name": "Sala" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Sala"] }],
+
+  // Límites por IP pensados para cientos de celulares detrás de una misma IP (Wi-Fi
+  // del hotel, NAT del operador). Los namespace_id son enteros únicos en la cuenta.
+  "ratelimits": [
+    // 600 celulares en sondeo (12/min cada uno) más sus cargas iniciales caben; un
+    // bot desde una sola IP sigue frenado.
+    { "name": "LIMITE_LECTURA", "namespace_id": "2026100201", "simple": { "limit": 20000, "period": 60 } },
+    { "name": "LIMITE_WS", "namespace_id": "2026100202", "simple": { "limit": 1500, "period": 60 } },
+    { "name": "LIMITE_ENTRADA", "namespace_id": "2026100203", "simple": { "limit": 10, "period": 60 } },
+    { "name": "LIMITE_PRESENTADOR", "namespace_id": "2026100204", "simple": { "limit": 240, "period": 60 } }
+  ],
+
+  "vars": {
+    // NCBI exige `tool` y `email` en cada petición; sin ellos limita y puede bloquear la IP.
+    "NCBI_TOOL": "charla-caso-clinico",
+    "CONTACT_EMAIL": "david@davidduque.com"
+  },
+
+  // Secretos (NO van aquí): ANTHROPIC_API_KEY, PRESENTER_TOKEN y, opcional, NCBI_API_KEY.
+  //   npx wrangler secret put ANTHROPIC_API_KEY
+  //   npx wrangler secret put PRESENTER_TOKEN
+
+  "observability": { "enabled": true }
+}

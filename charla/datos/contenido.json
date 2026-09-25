@@ -1,0 +1,128 @@
+{
+  "_nota": "Contenido fijo de la demo. Las cinco referencias, sus DOI y sus consultas son las de base/charla-ia-investigacion.html, sin cambios. No invente referencias ni cambie DOI sin consultarlo con el ponente. 'titulo' es el título tal como aparece dentro de 'cita' y sirve para confirmar que un resultado de PubMed es de verdad el artículo citado. 'fabricada' es la verdad del ejercicio: 2 reales y 3 inventadas.",
+  "tema": "manejo de la gripa (influenza) en adultos",
+  "referencias": [
+    {
+      "n": 1,
+      "cita": "Lindqvist HM, Okafor CE, Barreiro-Santos L, Whitcombe RJ, Doucet AL, Varga P. Early oseltamivir and time to return to work in adults with influenza: a randomized controlled trial. Clin Infect Dis. 2023;77(9):1285-1293.",
+      "titulo": "Early oseltamivir and time to return to work in adults with influenza: a randomized controlled trial",
+      "corta": "Lindqvist HM, et al. Clin Infect Dis. 2023",
+      "doi": "10.1093/cid/ciad1893",
+      "qTitulo": "oseltamivir[Title] AND \"return to work\"[Title]",
+      "qAutor": "Lindqvist[Author] AND oseltamivir[Title/Abstract]",
+      "fabricada": true
+    },
+    {
+      "n": 2,
+      "cita": "Hayden FG, Sugaya N, Hirotsu N, Lee N, de Jong MD, Hurt AC, et al. Baloxavir Marboxil for Uncomplicated Influenza in Adults and Adolescents. N Engl J Med. 2018;379(10):913-923.",
+      "titulo": "Baloxavir Marboxil for Uncomplicated Influenza in Adults and Adolescents",
+      "corta": "Hayden FG, et al. N Engl J Med. 2018",
+      "doi": "10.1056/NEJMoa1716197",
+      "qTitulo": "baloxavir[Title] AND uncomplicated[Title] AND adolescents[Title]",
+      "qAutor": "Hayden FG[Author] AND baloxavir[Title/Abstract]",
+      "fabricada": false
+    },
+    {
+      "n": 3,
+      "cita": "Moreau-Quintana A, Berglund TE, Adeyemi FO, Castillo-Ruiz J, Whitlock HD. Paracetamol or ibuprofen for symptom relief in adults with influenza: a prospective cohort study. J Infect. 2021;83(3):352-359.",
+      "titulo": "Paracetamol or ibuprofen for symptom relief in adults with influenza: a prospective cohort study",
+      "corta": "Moreau-Quintana A, et al. J Infect. 2021",
+      "doi": "10.1016/j.jinf.2021.06.041",
+      "qTitulo": "(paracetamol[Title] OR ibuprofen[Title]) AND influenza[Title] AND adults[Title]",
+      "qAutor": "Moreau-Quintana[Author] AND influenza[Title/Abstract]",
+      "fabricada": true
+    },
+    {
+      "n": 4,
+      "cita": "Jefferson T, Jones MA, Doshi P, Del Mar CB, Hama R, Thompson MJ, et al. Neuraminidase inhibitors for preventing and treating influenza in adults and children. Cochrane Database Syst Rev. 2014;2014(4):CD008965.",
+      "titulo": "Neuraminidase inhibitors for preventing and treating influenza in adults and children",
+      "corta": "Jefferson T, et al. Cochrane Database Syst Rev. 2014",
+      "doi": "10.1002/14651858.CD008965.pub4",
+      "qTitulo": "neuraminidase[Title] AND inhibitors[Title] AND preventing[Title] AND treating[Title]",
+      "qAutor": "Jefferson T[Author] AND neuraminidase[Title]",
+      "fabricada": false
+    },
+    {
+      "n": 5,
+      "cita": "Ferreira-Mendes P, Haugland IK, Castellanos MR, O'Dowd SJ, Rautio EM. Symptomatic treatments for adults with influenza-like illness: a systematic review and network meta-analysis. Lancet Infect Dis. 2022;22(11):1621-1630.",
+      "titulo": "Symptomatic treatments for adults with influenza-like illness: a systematic review and network meta-analysis",
+      "corta": "Ferreira-Mendes P, et al. Lancet Infect Dis. 2022",
+      "doi": "10.1016/S1473-3099(22)00614-5",
+      "qTitulo": "symptomatic[Title] AND \"influenza-like illness\"[Title] AND \"network meta-analysis\"[Title]",
+      "qAutor": "Ferreira-Mendes[Author] AND influenza[Title/Abstract]",
+      "fabricada": true
+    }
+  ],
+  "resumen": {
+    "_nota": "Prompt fijo del servidor. El público nunca lo ve ni lo puede cambiar. Sin herramientas, sin búsqueda y sin prompt de sistema: así se comporta un chatbot sin acceso a bases de datos.",
+    "referencia": 1,
+    "instruccion": "Resuma en cuatro o cinco líneas los métodos y los resultados principales de este artículo. Responda en español y trate de usted al lector."
+  },
+  "evidentia": {
+    "pregunta": "¿Miel o sulfadiazina de plata para quemaduras de espesor parcial superficial?"
+  },
+  "diapositivas": [
+    "Del caso clínico al PubMed",
+    "¿Cuáles de estas cinco existen?",
+    "Demostración: referencias sobre la gripa en adultos",
+    "Si no la abrió, no la cite.",
+    "La misma duda, bien hecha",
+    "En la entrevista de residencia le van a preguntar por su artículo.",
+    "Lo que sí puede publicar hoy",
+    "Siete pasos, un mismo caso",
+    "De la duda a una pregunta PICO",
+    "Buscar sin inventar referencias",
+    "Leer con la fuente al lado",
+    "Analizar datos sin ser estadístico",
+    "Escribir primero, pulir después",
+    "Elegir revista sin caer en trampas",
+    "Responder a los revisores",
+    "Cuatro líneas rojas",
+    "La IA acelera.",
+    "Llévese el kit"
+  ],
+  "kit": {
+    "_nota": "Lo que /vivo ofrece para llevar. Las líneas rojas son las de la diapositiva 16, textuales. Los prompts salen de lo que dice cada diapositiva del paso 01 al 07; el ponente los revisa antes de congelar.",
+    "lineasRojas": [
+      {
+        "titulo": "La IA no es autora",
+        "texto": "ICMJE y COPE no la aceptan como autora. Su uso se declara donde lo pida la revista."
+      },
+      {
+        "titulo": "Cero datos identificables",
+        "texto": "Ni nombres, ni documentos, ni fotos de pacientes en herramientas abiertas. Ley 1581 de 2012."
+      },
+      {
+        "titulo": "Ética antes que datos",
+        "texto": "Aval del comité de ética y consentimiento informado, incluido el de las fotografías."
+      },
+      {
+        "titulo": "Si no la abrió, no la cite",
+        "texto": "Cada referencia se verifica en la fuente original, sin excepción."
+      }
+    ],
+    "guias": [
+      {
+        "nombre": "CARE (reporte de caso)",
+        "url": "https://www.equator-network.org/reporting-guidelines/care/"
+      },
+      {
+        "nombre": "STROBE (estudios observacionales)",
+        "url": "https://www.equator-network.org/reporting-guidelines/strobe/"
+      },
+      {
+        "nombre": "PRISMA (revisiones sistemáticas)",
+        "url": "https://www.equator-network.org/reporting-guidelines/prisma/"
+      }
+    ],
+    "prompts": [
+      "Paso 01 · Pregunta: «Convierta esta duda clínica en una pregunta PICO (población, intervención, comparador y desenlace) y sugiera palabras clave y términos MeSH para buscarla en PubMed: [su duda].»",
+      "Paso 02 · Búsqueda: «Con esta pregunta PICO, proponga una estrategia de búsqueda booleana para PubMed, con sinónimos y términos MeSH, y explique cómo comprobar en PubMed si ya existe una revisión sistemática sobre la misma pregunta: [PICO].»",
+      "Paso 03 · Lectura: «Usando solo los artículos que le adjunto, compare cómo midió cada uno el desenlace principal y cite el fragmento exacto de donde sale cada dato.»",
+      "Paso 04 · Datos: «Con esta base anonimizada, indique qué prueba estadística corresponde a cada comparación y por qué, escriba el código para ejecutarla y muéstreme cada cifra junto a los datos crudos de los que sale.»",
+      "Paso 05 · Escritura: «Revise mi manuscrito contra la guía [CARE, STROBE o PRISMA] y dígame qué ítems faltan y dónde. No reescriba las conclusiones: son mías.»",
+      "Paso 06 · Revista: «Compare el alcance, los requisitos para autores y el costo de publicación de estas revistas candidatas, y dígame en qué índice oficial debo confirmar que cada una está indexada: [revistas].»",
+      "Paso 07 · Revisores: «Organice estos comentarios de los revisores en una tabla punto por punto y proponga un borrador de respuesta para cada uno, señalando cuáles aceptaría y cuáles exigen un argumento mío: [comentarios].»"
+    ]
+  }
+}

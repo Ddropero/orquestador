@@ -1,0 +1,73 @@
+:root{
+  --paper:#F6F3EC; --card:#FFFDF8; --ink:#0F1B2D; --body:#3F4A5A; --soft:#626A78;
+  --gold:#7A5A1E; --glow:#C9A45C; --line:#E4DDCC; --alert:#A63D2A; --ok:#2F6B3A;
+  --ia:#FBF4E6; --ia-borde:#C9A45C;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#0F1B2D; --card:#16263D; --ink:#F6F3EC; --body:#BFC8D6; --soft:#8E9AAE;
+    --gold:#C9A45C; --line:#24364F; --alert:#E08A76; --ok:#8CC79A; --ia:#1D2B40; --ia-borde:#C9A45C;
+  }
+}
+*,*::before,*::after{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; background:var(--paper); color:var(--body);
+  font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  padding:0 16px env(safe-area-inset-bottom,0px);
+}
+.cabecera,main,.pie{ max-width:40rem; margin:0 auto; }
+.cabecera{ padding:20px 0 8px; }
+h1,h2,h3{ font-family:Georgia,"Times New Roman",serif; color:var(--ink); margin:0; }
+h1{ font-size:1.6rem; line-height:1.15; }
+h2{ font-size:1.15rem; margin-bottom:8px; }
+h3{ font-size:1rem; margin:14px 0 6px; }
+p{ margin:0; }
+.eyebrow{ font-size:.72rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); }
+.envivo{ font-family:system-ui,sans-serif; font-size:.7rem; letter-spacing:.12em; text-transform:uppercase;
+  background:var(--alert); color:#fff; border-radius:999px; padding:3px 9px; vertical-align:middle; }
+.lema{ margin-top:6px; font-style:italic; color:var(--ink); }
+.conexion{ margin-top:8px; font-size:.85rem; color:var(--soft); }
+.conexion.ok::before{ content:"● "; color:var(--ok); }
+.conexion.sondeo::before{ content:"● "; color:var(--gold); }
+.conexion.caida::before{ content:"● "; color:var(--alert); }
+.tarjeta{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin:12px 0; }
+.diapo{ font-size:1.05rem; color:var(--ink); margin-top:4px; }
+.diapo-titulo{ font-family:Georgia,serif; font-size:1.15rem; color:var(--ink); margin-top:2px; }
+.nota{ font-size:.85rem; color:var(--soft); margin-bottom:8px; }
+.vacio{ font-size:.9rem; color:var(--soft); }
+.docente{ display:inline-block; font-size:.78rem; font-weight:700; color:#fff; background:var(--alert);
+  border-radius:8px; padding:4px 10px; margin:2px 0 8px; }
+.caja-ia{ border:2px dashed var(--ia-borde); border-radius:12px; padding:12px; background:var(--ia);
+  background-image:repeating-linear-gradient(135deg, transparent 0 22px, rgba(166,61,42,.06) 22px 44px); }
+.sello{ font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--alert); }
+.sello-ensayo{ color:var(--gold); margin-top:4px; }
+.sello-fin{ margin-top:8px; text-transform:none; letter-spacing:0; font-size:.85rem; }
+.texto-ia{ white-space:pre-wrap; margin-top:8px; color:var(--ink); font-size:.95rem; }
+.refs,.etapas,.linea,.avisos,.lineas-rojas,.guias,.prompts{ margin:0; padding-left:1.1em; display:flex; flex-direction:column; gap:8px; }
+.refs li{ padding:8px 10px; border-left:4px solid var(--line); background:var(--paper); border-radius:8px; list-style-position:inside; }
+.refs li.si{ border-left-color:var(--ok); }
+.refs li.no{ border-left-color:var(--alert); }
+.refs .cita{ color:var(--ink); font-size:.92rem; }
+.refs .pendiente{ color:var(--soft); font-style:italic; }
+.veredicto{ display:block; font-weight:700; margin-top:4px; font-size:.9rem; }
+.si .veredicto{ color:var(--ok); }
+.no .veredicto{ color:var(--alert); }
+.fabricada{ display:block; margin-top:4px; font-size:.8rem; font-weight:700; color:var(--alert); }
+.consultas{ display:block; font-size:.8rem; color:var(--soft); margin-top:2px; }
+.ensayo{ display:inline-block; margin-top:4px; font-size:.75rem; font-weight:700; color:var(--gold);
+  border:1px solid var(--gold); border-radius:999px; padding:1px 8px; }
+.etapas li{ font-size:.92rem; }
+.etapas .estado{ font-size:.75rem; font-weight:700; border-radius:999px; padding:1px 8px; margin-left:4px; white-space:nowrap; }
+.estado.completada{ background:var(--ok); color:#fff; }
+.estado.en-curso{ background:var(--gold); color:#fff; }
+.estado.fallo,.estado.sin-terminar{ background:var(--alert); color:#fff; }
+.etapas .detalle{ display:block; font-size:.82rem; color:var(--soft); }
+.linea{ list-style:none; padding:0; }
+.linea li{ font-size:.88rem; border-bottom:1px solid var(--line); padding-bottom:6px; }
+.linea time{ font-variant-numeric:tabular-nums; color:var(--soft); margin-right:6px; }
+.avisos li{ color:var(--ink); }
+.lineas-rojas b{ color:var(--ink); }
+a{ color:var(--gold); }
+.pie{ font-size:.78rem; color:var(--soft); padding:8px 0 28px; display:flex; flex-direction:column; gap:4px; }
