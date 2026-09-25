@@ -54,7 +54,7 @@ npm test            # construye y corre las pruebas unitarias
 npm run e2e         # wrangler dev + simuladores de NCBI, Anthropic y Evidentia + Chromium
 
 npx wrangler login
-npx wrangler secret put PRESENTER_TOKEN     # 12 caracteres o más, al azar: openssl rand -hex 6
+npx wrangler secret put PRESENTER_TOKEN     # 5 o más letras y dígitos al azar (ver abajo)
 npx wrangler secret put ANTHROPIC_API_KEY
 npx wrangler secret put NCBI_API_KEY        # opcional: 10 peticiones/s en vez de 3
 CHARLA_SIN_RESPALDOS=1 npm run deploy       # el primer despliegue, antes de grabar los respaldos
@@ -66,6 +66,12 @@ node scripts/preflight.mjs https://charla.davidduque.com
 Si el DNS de `davidduque.com` no está en Cloudflare, quite la entrada `routes` de `wrangler.jsonc`, ponga la URL `*.workers.dev` en `config.json` y vuelva a desplegar: el QR se genera en la construcción.
 
 ### Entrar como presentador
+
+El token son 5 o más letras y dígitos al azar; genérelo así, nunca con una palabra propia:
+
+```bash
+LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 5; echo
+```
 
 Abra `/presentador` y escriba el token; queda una cookie de sesión (HttpOnly, `__Host-`, tres días) que se renueva cada vez que abre `/presentador`: abrirla el día de la charla da tres días frescos. Para no escribirlo en tarima, guarde en el navegador del portátil el enlace `/presentador#t=<token>`: el fragmento nunca sale del navegador y se borra al usarse.
 

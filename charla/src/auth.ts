@@ -26,10 +26,11 @@ export function nombreCookie(local: boolean): string {
 export const DURACION_SESION_S = 3 * 24 * 60 * 60;
 /**
  * Un token corto se adivina. Por debajo de esto el servidor no autentica a nadie.
- * Con 12 caracteres al azar (`openssl rand -hex 6`) hay 16^12 ≈ 2,8·10^14 opciones;
- * a 10 intentos fallidos por minuto e IP, adivinarlo tarda siglos aun con mil IP.
+ * Decisión del ponente: 5 caracteres, para teclearlo en tarima. Con letras y dígitos
+ * al azar hay 62^5 ≈ 9·10^8 opciones; a 10 intentos fallidos por minuto e IP, una IP
+ * tardaría siglos y mil IP, semanas. Lo que protege es el cupo de la entrada.
  */
-export const LONGITUD_MINIMA_TOKEN = 12;
+export const LONGITUD_MINIMA_TOKEN = 5;
 
 const codificador = new TextEncoder();
 

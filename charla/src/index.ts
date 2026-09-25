@@ -247,7 +247,7 @@ async function entrar(request: Request, env: Env, url: URL, ip: string): Promise
   if (!(await tokenValido(candidato, env.PRESENTER_TOKEN))) {
     // Solo los intentos fallidos gastan el cupo: un vecino de Wi-Fi con diez envíos
     // vacíos por minuto no deja fuera al ponente, que comparte la IP del auditorio.
-    // Con un token al azar de 12 caracteres o más, adivinarlo cuesta más que la charla.
+    // Con un token al azar de letras y dígitos, este cupo es lo que impide adivinarlo.
     if (!(await permitido(env.LIMITE_ENTRADA, `entrada:${ip}`))) return demasiadas();
     console.warn(JSON.stringify({ evento: 'entrada_fallida' }));
     return redirigir('/presentador?error=1');

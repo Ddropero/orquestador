@@ -26,9 +26,8 @@ describe('token del presentador', () => {
 
   it('con un token del servidor ausente o corto, nadie entra', async () => {
     expect(await tokenValido('', undefined)).toBe(false);
-    expect(await tokenValido('corto', 'corto')).toBe(false);
-    expect(await tokenValido('a1b2c3d4e5f', 'a1b2c3d4e5f')).toBe(false); // 11
-    expect(await tokenValido('a1b2c3d4e5f6', 'a1b2c3d4e5f6')).toBe(true); // 12
+    expect(await tokenValido('aB3x', 'aB3x')).toBe(false); // 4
+    expect(await tokenValido('aB3xZ', 'aB3xZ')).toBe(true); // 5
   });
 });
 
