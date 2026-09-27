@@ -34,7 +34,7 @@ a{ color:var(--gold); }
 button{ font:inherit; }
 button:focus-visible,a:focus-visible,summary:focus-visible{ outline:3px solid var(--glow); outline-offset:2px; }
 .eyebrow{ font-size:.72rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); }
-.envivo{ font-family:system-ui,sans-serif; font-size:.7rem; letter-spacing:.12em; text-transform:uppercase;
+.envivo{ display:inline-block; white-space:nowrap; font-family:system-ui,sans-serif; font-size:.7rem; letter-spacing:.12em; text-transform:uppercase;
   background:var(--alert); color:var(--sobre); border-radius:999px; padding:3px 9px; vertical-align:middle; }
 .lema{ margin-top:6px; font-style:italic; color:var(--ink); }
 .conexion{ margin-top:8px; font-size:.85rem; color:var(--soft); }
