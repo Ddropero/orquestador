@@ -131,6 +131,12 @@ const CONTROLES = `
     <p><a id="c-evidentia-ensayo" target="_blank" rel="noopener" hidden>Abrir el resultado del ensayo</a></p>
   </section>
   <section>
+    <h4>Votación del público</h4>
+    <p>El público vota en su celular si cada referencia existe. Solo ve los números del 1 al 5: las citas las lee en la diapositiva. Verificar en PubMed la cierra sola.</p>
+    <div class="fila"><button id="c-votacion-abrir" type="button">Abrir la votación</button><button class="ghost" id="c-votacion-cerrar" type="button">Cerrar la votación</button></div>
+    <p id="c-votacion-estado"></p>
+  </section>
+  <section>
     <h4>Público (/vivo)</h4>
     <form id="c-aviso" class="fila"><input id="c-aviso-texto" maxlength="280" placeholder="Mensaje para el público" autocomplete="off"><button type="submit">Enviar</button></form>
     <div class="fila" style="margin-top:8px"><button class="ghost" id="c-reiniciar" type="button">Reiniciar la sala</button></div>
@@ -155,7 +161,7 @@ const NOTAS_ANCLA = {
 export function notasExtra(textoUrl) {
   return {
     1: `Invite a escanear el QR o a escribir ${textoUrl}; pulse C y confirme que el panel muestra público conectado.`,
-    3: 'Con el sistema: pulse el primer botón y, mientras el modelo responde, lea la lista en forma corta; una sola votación (¿cuántas de las cinco existen?); después el segundo botón. Si a los 8 s no llega nada aparece el botón del ensayo; a los 25 s el respaldo entra solo.',
+    3: 'Con el sistema: abra la votación en el panel (tecla C) y pida que voten en el celular; pulse el primer botón y, mientras el modelo responde, lea la lista en forma corta. Si no hay tiempo, una sola votación a mano alzada (¿cuántas de las cinco existen?). El segundo botón cierra la votación y verifica. Si a los 8 s no llega nada aparece el botón del ensayo; a los 25 s el respaldo entra solo.',
     10: 'Sin red, ninguno de los enlaces de Evidentia abre: use el PDF del ensayo guardado en el escritorio.',
   };
 }
@@ -270,23 +276,50 @@ async function construirPresentador({ contenido, config, respaldos, urlVivo }) {
   return { html, csp };
 }
 
+/** «Paso 01 · Pregunta: «texto»» → «texto». El prompt que se copia no lleva la etiqueta. */
+export function textoDelPrompt(prompt) {
+  const m = /«([\s\S]*)»\s*$/.exec(prompt);
+  if (!m) throw new Error(`Prompt del kit sin comillas latinas: ${prompt}`);
+  return m[1];
+}
+
+/** Resultados que la sala abre y compara por cada búsqueda (RETMAX de src/pubmed.ts). */
+const RESULTADOS_ABIERTOS = 20;
+
 async function construirVivo({ contenido, respaldos }) {
   const plantilla = await leer('web/vivo.html');
+  const pasos = contenido.pasos.lista;
+  if (pasos.length !== contenido.kit.prompts.length) throw new Error('Cada paso necesita su prompt en kit.prompts.');
   const datos = {
     totalDiapositivas: contenido.diapositivas.length,
     refResumen: contenido.resumen.referencia,
     fechaEnsayoPubmed: respaldos.pubmed?.fecha ?? null,
+    fechaEnsayoEvidentia: respaldos.evidentia?.fecha ?? null,
+    resultadosAbiertos: RESULTADOS_ABIERTOS,
     // Las fabricadas viajan en forma corta y marcadas: la cita completa y su DOI
-    // inventado no llegan nunca al público.
-    referencias: contenido.referencias.map((ref) =>
-      ref.fabricada
-        ? { n: ref.n, corta: ref.corta, fabricada: true }
-        : { n: ref.n, cita: ref.cita, corta: ref.corta, fabricada: false },
-    ),
+    // inventado no llegan nunca al público. Tampoco en la consulta por DOI: de una
+    // fabricada solo se dice que se buscó "el DOI citado".
+    // /vivo muestra las consultas de una referencia solo junto a su veredicto.
+    referencias: contenido.referencias.map((ref) => {
+      const consultas = { titulo: ref.qTitulo, doi: ref.fabricada ? null : `"${ref.doi}"[aid]`, autor: ref.qAutor };
+      return ref.fabricada
+        ? { n: ref.n, corta: ref.corta, fabricada: true, consultas }
+        : { n: ref.n, cita: ref.cita, corta: ref.corta, fabricada: false, consultas };
+    }),
+    // El mapa de los siete pasos: textos de las diapositivas 9 a 15 y el prompt de cada uno.
+    pasos: pasos.map((p, i) => ({
+      paso: p.paso,
+      diapositiva: p.diapositiva,
+      etiqueta: p.etiqueta,
+      titulo: p.titulo,
+      propone: p.propone,
+      verifica: p.verifica,
+      herramientas: p.herramientas,
+      prompt: textoDelPrompt(contenido.kit.prompts[i]),
+    })),
     kit: {
       lineasRojas: contenido.kit.lineasRojas,
       guias: contenido.kit.guias,
-      prompts: contenido.kit.prompts,
     },
   };
   return unaVez(plantilla, '__DATOS_VIVO__', jsonEmbebido(datos));

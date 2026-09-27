@@ -13,11 +13,40 @@
  *  - `coincide` (pubmed_consulta): una búsqueda puede devolver artículos que NO son
  *    el citado. La referencia 3 lo hace por título. Contar resultados no basta.
  *  - `detalle` (evidentia_etapa): cifras de la etapa, construidas por el servidor.
+ *
+ * Tipos añadidos para que el público vea el proceso y no solo el resultado:
+ *  - `pubmed_buscando`: la sala está a punto de consultar PubMed por esa vía para
+ *    esa referencia. Solo número y vía: el texto de la consulta lo tiene /vivo desde
+ *    la construcción y no lo muestra antes del veredicto.
+ *  - `evidentia_embudo`: las cifras del embudo de Evidentia (encontradas, únicas,
+ *    comprobadas, retractadas, afirmaciones con cita, escaladas). Solo enteros: nada
+ *    del texto del resultado llega al público.
+ *  - `votacion` y `votos`: la votación del público sobre si cada referencia existe.
+ *    Solo números de referencia y totales: ninguna cita, ningún votante.
  */
 import type { Via } from './contenido.js';
 
 export type Tema = 'resumen' | 'verificacion' | 'evidentia';
 export type EstadoEtapa = 'en curso' | 'completada' | 'falló' | 'sin terminar';
+export type EstadoVotacion = 'abierta' | 'cerrada';
+
+/** Cifras del embudo de Evidentia. Todas opcionales: se difunde solo lo que el resultado trae. */
+export interface CifrasEmbudo {
+  pubmed?: number;
+  europepmc?: number;
+  unicas?: number;
+  comprobadas?: number;
+  retractadas?: number;
+  afirmaciones?: number;
+  escaladas?: number;
+}
+export const CAMPOS_EMBUDO = ['pubmed', 'europepmc', 'unicas', 'comprobadas', 'retractadas', 'afirmaciones', 'escaladas'] as const;
+
+export interface ConteoVotos {
+  ref: number;
+  si: number;
+  no: number;
+}
 
 interface Base {
   ts: number;
@@ -31,7 +60,11 @@ export type Evento =
   | (Base & { tipo: 'pubmed_consulta'; ref: number; via: Via; resultados: number; coincide: boolean; ensayo?: boolean })
   | (Base & { tipo: 'pubmed_veredicto'; ref: number; existe: boolean; pmid?: string; ensayo?: boolean })
   | (Base & { tipo: 'evidentia_etapa'; etapa: string; estado: EstadoEtapa; detalle?: string })
-  | (Base & { tipo: 'aviso'; texto: string });
+  | (Base & { tipo: 'aviso'; texto: string })
+  | (Base & { tipo: 'pubmed_buscando'; ref: number; via: Via; ensayo?: boolean })
+  | (Base & { tipo: 'evidentia_embudo'; ensayo?: boolean } & CifrasEmbudo)
+  | (Base & { tipo: 'votacion'; estado: EstadoVotacion; ronda: number })
+  | (Base & { tipo: 'votos'; ronda: number; conteos: ConteoVotos[] });
 
 /** Un evento antes de que la sala le ponga `ts` y `seq`. */
 export type EventoNuevo = Evento extends infer E ? (E extends Evento ? Omit<E, 'ts' | 'seq'> : never) : never;
@@ -44,11 +77,20 @@ export const TIPOS = [
   'pubmed_veredicto',
   'evidentia_etapa',
   'aviso',
+  'pubmed_buscando',
+  'evidentia_embudo',
+  'votacion',
+  'votos',
 ] as const;
 
 const TEMAS: readonly Tema[] = ['resumen', 'verificacion', 'evidentia'];
 const VIAS: readonly Via[] = ['título', 'DOI', 'autor'];
 const ESTADOS: readonly EstadoEtapa[] = ['en curso', 'completada', 'falló', 'sin terminar'];
+const ESTADOS_VOTACION: readonly EstadoVotacion[] = ['abierta', 'cerrada'];
+/** Número de referencias de la demo: la votación trae siempre un conteo por cada una. */
+export const TOTAL_REFERENCIAS = 5;
+/** Tope de cualquier cifra difundida: nada legítimo de esta charla se le acerca. */
+const CIFRA_MAX = 1_000_000;
 
 export const LIMITES = {
   texto_parcial: 6000,
@@ -154,6 +196,47 @@ export function sanear(entrada: unknown, ts: number, seq: number): Evento | null
       const texto = limpiarTexto(e['texto'], LIMITES.aviso);
       return texto ? { ...base, tipo: 'aviso', texto } : null;
     }
+    case 'pubmed_buscando': {
+      const ref = entero(e['ref'], 1, TOTAL_REFERENCIAS);
+      const via = e['via'];
+      if (ref === null || !VIAS.includes(via as Via)) return null;
+      return { ...base, tipo: 'pubmed_buscando', ref, via: via as Via, ...(e['ensayo'] === true ? { ensayo: true } : {}) };
+    }
+    case 'evidentia_embudo': {
+      const cifras: CifrasEmbudo = {};
+      for (const campo of CAMPOS_EMBUDO) {
+        if (e[campo] === undefined || e[campo] === null) continue;
+        const v = entero(e[campo], 0, CIFRA_MAX);
+        // Una cifra presente pero inválida invalida el evento: no se difunde a medias.
+        if (v === null) return null;
+        cifras[campo] = v;
+      }
+      if (Object.keys(cifras).length === 0) return null;
+      return { ...base, tipo: 'evidentia_embudo', ...cifras, ...(e['ensayo'] === true ? { ensayo: true } : {}) };
+    }
+    case 'votacion': {
+      const estado = e['estado'];
+      const ronda = entero(e['ronda'], 1, Number.MAX_SAFE_INTEGER);
+      if (ronda === null || !ESTADOS_VOTACION.includes(estado as EstadoVotacion)) return null;
+      return { ...base, tipo: 'votacion', estado: estado as EstadoVotacion, ronda };
+    }
+    case 'votos': {
+      const ronda = entero(e['ronda'], 1, Number.MAX_SAFE_INTEGER);
+      const lista = e['conteos'];
+      if (ronda === null || !Array.isArray(lista) || lista.length !== TOTAL_REFERENCIAS) return null;
+      const conteos: ConteoVotos[] = [];
+      for (const c of lista) {
+        if (!c || typeof c !== 'object') return null;
+        const x = c as Record<string, unknown>;
+        const ref = entero(x['ref'], 1, TOTAL_REFERENCIAS);
+        const si = entero(x['si'], 0, CIFRA_MAX);
+        const no = entero(x['no'], 0, CIFRA_MAX);
+        if (ref === null || si === null || no === null || conteos.some((k) => k.ref === ref)) return null;
+        conteos.push({ ref, si, no });
+      }
+      conteos.sort((a, b) => a.ref - b.ref);
+      return { ...base, tipo: 'votos', ronda, conteos };
+    }
     default:
       return null;
   }
@@ -174,9 +257,17 @@ export function compactar(historial: Evento[], nuevo: Evento, maximo = 200): Eve
       nuevo.tema === 'resumen'
         ? ['claude_texto']
         : nuevo.tema === 'verificacion'
-          ? ['pubmed_consulta', 'pubmed_veredicto']
-          : ['evidentia_etapa'];
+          ? ['pubmed_consulta', 'pubmed_veredicto', 'pubmed_buscando']
+          : ['evidentia_etapa', 'evidentia_embudo'];
     h = h.filter((e) => !borrar.includes(e.tipo) && !(e.tipo === 'demo_inicio' && e.tema === nuevo.tema));
+  }
+  // De estos solo importa el último: el paso en curso, el embudo y el estado y los
+  // totales de la votación. Una votación que se abre en una ronda nueva empieza de cero.
+  if (nuevo.tipo === 'pubmed_buscando') h = h.filter((e) => e.tipo !== 'pubmed_buscando');
+  if (nuevo.tipo === 'evidentia_embudo') h = h.filter((e) => e.tipo !== 'evidentia_embudo');
+  if (nuevo.tipo === 'votos') h = h.filter((e) => e.tipo !== 'votos');
+  if (nuevo.tipo === 'votacion') {
+    h = h.filter((e) => e.tipo !== 'votacion' && !(e.tipo === 'votos' && e.ronda !== nuevo.ronda));
   }
   if (nuevo.tipo === 'aviso') {
     const avisos = h.filter((e) => e.tipo === 'aviso');

@@ -125,7 +125,9 @@ describe('/vivo: la página del público', () => {
     const d = datosEmbebidos(VIVO_HTML, 'datos-vivo');
     for (const r of d.referencias) {
       if (r.fabricada) {
-        expect(Object.keys(r).sort()).toEqual(['corta', 'fabricada', 'n']);
+        expect(Object.keys(r).sort()).toEqual(['consultas', 'corta', 'fabricada', 'n']);
+        // De la búsqueda por DOI de una fabricada solo se dice que se buscó el DOI citado.
+        expect(r.consultas.doi).toBeNull();
       } else {
         expect(r.cita).toBeTruthy();
       }

@@ -81,6 +81,105 @@
     "La IA acelera.",
     "Llévese el kit"
   ],
+  "pasos": {
+    "_nota": "Los siete pasos para el mapa de /vivo. Etiqueta, título, «La IA propone», «Usted verifica» y herramientas son textuales de las diapositivas 9 a 15 (una prueba lo comprueba). El prompt de cada paso es el de kit.prompts. La línea dorada de cada diapositiva no se copia: la del paso 02 tiene una cifra sin fuente pendiente de decisión del ponente.",
+    "lista": [
+      {
+        "paso": 1,
+        "diapositiva": 9,
+        "etiqueta": "Pregunta",
+        "titulo": "De la duda a una pregunta PICO",
+        "propone": "Convierte su duda clínica en formato PICO y sugiere palabras clave y términos MeSH.",
+        "verifica": "Decide si la pregunta es relevante, factible con sus recursos y si todavía no está respondida.",
+        "herramientas": [
+          "Claude",
+          "ChatGPT",
+          "MeSH de PubMed"
+        ]
+      },
+      {
+        "paso": 2,
+        "diapositiva": 10,
+        "etiqueta": "Búsqueda",
+        "titulo": "Buscar sin inventar referencias",
+        "propone": "Arma la estrategia booleana, encuentra artículos relacionados y muestra si otros autores apoyan o contradicen cada hallazgo.",
+        "verifica": "Corre la búsqueda en PubMed, abre cada artículo y confirma que ninguno esté retractado.",
+        "herramientas": [
+          "PubMed",
+          "Elicit",
+          "Consensus",
+          "Scite",
+          "Evidentia"
+        ]
+      },
+      {
+        "paso": 3,
+        "diapositiva": 11,
+        "etiqueta": "Lectura",
+        "titulo": "Leer con la fuente al lado",
+        "propone": "Resume y compara sus PDF, y cada respuesta señala el fragmento del artículo de donde sale.",
+        "verifica": "Lee completos los métodos y los resultados. Un resumen nunca reemplaza el artículo.",
+        "herramientas": [
+          "NotebookLM",
+          "Claude"
+        ]
+      },
+      {
+        "paso": 4,
+        "diapositiva": 12,
+        "etiqueta": "Datos",
+        "titulo": "Analizar datos sin ser estadístico",
+        "propone": "Sugiere la prueba adecuada, escribe el código del análisis y lo ejecuta sobre su base.",
+        "verifica": "Revisa cada cifra contra los datos crudos y entiende por qué esa prueba y no otra.",
+        "herramientas": [
+          "Claude",
+          "ChatGPT",
+          "R",
+          "Python"
+        ]
+      },
+      {
+        "paso": 5,
+        "diapositiva": 13,
+        "etiqueta": "Escritura",
+        "titulo": "Escribir primero, pulir después",
+        "propone": "Revisa su borrador contra la guía que corresponde, señala los vacíos y mejora el inglés.",
+        "verifica": "Escribe el primer borrador. Las ideas, los datos y las conclusiones son suyos.",
+        "herramientas": [
+          "Red EQUATOR",
+          "CARE",
+          "STROBE",
+          "PRISMA"
+        ]
+      },
+      {
+        "paso": 6,
+        "diapositiva": 14,
+        "etiqueta": "Revista",
+        "titulo": "Elegir revista sin caer en trampas",
+        "propone": "Compara el alcance, los requisitos y el costo de publicación de varias revistas candidatas.",
+        "verifica": "Confirma la indexación en la fuente oficial y descarta las revistas depredadoras.",
+        "herramientas": [
+          "Scimago",
+          "Scopus",
+          "Publindex",
+          "Think. Check. Submit."
+        ]
+      },
+      {
+        "paso": 7,
+        "diapositiva": 15,
+        "etiqueta": "Revisores",
+        "titulo": "Responder a los revisores",
+        "propone": "Ordena los comentarios en una tabla punto por punto y propone borradores de respuesta.",
+        "verifica": "Decide qué acepta y qué refuta, con argumentos y con referencias que sí leyó.",
+        "herramientas": [
+          "Claude",
+          "ChatGPT"
+        ]
+      }
+    ]
+  },
   "kit": {
     "_nota": "Lo que /vivo ofrece para llevar. Las líneas rojas son las de la diapositiva 16, textuales. Los prompts salen de lo que dice cada diapositiva del paso 01 al 07; el ponente los revisa antes de congelar.",
     "lineasRojas": [

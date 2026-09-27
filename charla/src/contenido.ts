@@ -5,6 +5,7 @@
  */
 import contenidoJson from '../datos/contenido.json';
 import configJson from '../datos/config.json';
+import type { CifrasEmbudo } from './eventos.js';
 
 export interface Referencia {
   n: number;
@@ -35,7 +36,8 @@ export interface VerificacionRegistrada {
 export interface Respaldos {
   claude: { texto: string; fecha: string; modelo?: string } | null;
   pubmed: { fecha: string; origen?: string; referencias: VerificacionRegistrada[] } | null;
-  evidentia: { runId: string; fecha: string } | null;
+  /** `cifras`: el embudo del run del ensayo, para mostrarlo si Evidentia falla en vivo. */
+  evidentia: { runId: string; fecha: string; cifras?: CifrasEmbudo } | null;
 }
 
 export const REFERENCIAS: readonly Referencia[] = contenidoJson.referencias;
@@ -43,6 +45,7 @@ export const TEMA = contenidoJson.tema;
 export const DIAPOSITIVAS: readonly string[] = contenidoJson.diapositivas;
 export const RESUMEN = contenidoJson.resumen;
 export const PREGUNTA_EVIDENTIA = contenidoJson.evidentia.pregunta;
+export const PASOS = contenidoJson.pasos.lista;
 
 export const CONFIG = configJson;
 
