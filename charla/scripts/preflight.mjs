@@ -40,6 +40,11 @@ async function medir(ruta, init) {
     if (cuerpo.includes(doi)) mal(`/vivo expone el DOI inventado ${doi}`);
   }
   res.headers.get('x-frame-options') === 'DENY' ? ok('x-frame-options: DENY') : mal('falta x-frame-options');
+  // Con Bot Fight Mode, Cloudflare mete un script en línea con un iframe oculto; el CSP
+  // lo bloquea, pero hay antivirus que por él marcan la página como peligrosa.
+  cuerpo.includes('/cdn-cgi/challenge-platform/')
+    ? mal('Cloudflare inyecta su script de detección de bots en /vivo (¿falta no-transform?)')
+    : ok('/vivo sin scripts inyectados por Cloudflare');
 }
 
 // El estado público y el WebSocket.

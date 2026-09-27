@@ -228,11 +228,24 @@ async function votar(request: Request, env: Env, ip: string): Promise<Response> 
   return conCabeceras(res, { 'cache-control': 'no-store' });
 }
 
+/**
+ * `no-transform` en las páginas HTML: con Bot Fight Mode, Cloudflare mete en cada
+ * HTML un script en línea (JavaScript Detections, un iframe oculto que carga
+ * /cdn-cgi/challenge-platform). El CSP lo bloquea igual, pero su patrón hace que
+ * antivirus como Kaspersky marquen la página como peligrosa. Cloudflare documenta
+ * que no inyecta nada si la respuesta lleva `no-transform`; a cambio no comprime
+ * estas páginas en el borde, y pesan unos 13 KB.
+ */
+const SIN_INYECCION = 'no-transform';
+
 async function servirPublico(env: Env, url: URL, archivo: string): Promise<Response> {
   const res = await env.ASSETS.fetch(new URL(archivo, url.origin));
   if (!res.ok) return error(404, 'No existe esta ruta.');
   const extra: Record<string, string> = { 'cache-control': 'no-cache' };
-  if (archivo.endsWith('.html')) extra['content-security-policy'] = cspVivo(url.origin);
+  if (archivo.endsWith('.html')) {
+    extra['content-security-policy'] = cspVivo(url.origin);
+    extra['cache-control'] = `no-cache, ${SIN_INYECCION}`;
+  }
   if (archivo === '/sw-presentador.js') extra['service-worker-allowed'] = '/presentador';
   return conCabeceras(res, extra);
 }
@@ -241,7 +254,7 @@ async function servirEntrada(env: Env, url: URL): Promise<Response> {
   const res = await env.ASSETS.fetch(new URL('/entrar.html', url.origin));
   return conCabeceras(
     res,
-    { 'content-security-policy': CSP_ENTRAR, 'cache-control': 'no-store', 'x-robots-tag': 'noindex' },
+    { 'content-security-policy': CSP_ENTRAR, 'cache-control': `no-store, ${SIN_INYECCION}`, 'x-robots-tag': 'noindex' },
     401,
   );
 }
@@ -252,7 +265,7 @@ async function servirPresentador(env: Env, url: URL, descargar: boolean, extra: 
   return conCabeceras(res, {
     ...extra,
     'content-security-policy': CSP_PRESENTADOR,
-    'cache-control': 'no-store, private',
+    'cache-control': `no-store, private, ${SIN_INYECCION}`,
     'x-robots-tag': 'noindex',
     // El service worker solo guarda para uso sin red lo que lleva esta marca: nunca
     // la página de entrada.

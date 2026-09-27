@@ -161,6 +161,7 @@ try {
     const csp = v.headers.get('content-security-policy') ?? '';
     comprobar(csp.includes("script-src 'self'") && !csp.includes('unsafe-inline'), '/vivo lleva CSP estricto');
     comprobar(v.headers.get('x-frame-options') === 'DENY' && v.headers.get('referrer-policy') === 'same-origin', '/vivo lleva cabeceras de seguridad');
+    comprobar((v.headers.get('cache-control') ?? '').includes('no-transform'), '/vivo con no-transform (Cloudflare no le inyecta scripts)');
     comprobar(cuerpo.includes('Ejercicio docente: referencias fabricadas a propósito'), '/vivo lleva la etiqueta docente');
     comprobar(DOIS_INVENTADOS.every((doi) => !cuerpo.includes(doi)) && !cuerpo.includes('Early oseltamivir and time to return'), '/vivo no lleva las citas inventadas completas ni sus DOI');
     const js = await (await get('/vivo.js')).text();
@@ -179,6 +180,7 @@ try {
   {
     const sin = await get('/presentador');
     comprobar(sin.status === 401 && (await sin.text()).includes('Acceso del presentador'), '/presentador sin sesión pide el token (401)');
+    comprobar((sin.headers.get('cache-control') ?? '').includes('no-transform'), 'la página de entrada con no-transform');
     const form = (token) =>
       get('/presentador/entrar', {
         method: 'POST',
@@ -202,7 +204,7 @@ try {
     const html = await p.text();
     comprobar(p.status === 200 && (html.match(/<section class="slide/g) ?? []).length === 18, '/presentador con sesión: 18 diapositivas');
     comprobar((p.headers.get('content-security-policy') ?? '').includes("'sha256-"), '/presentador con CSP por hash');
-    comprobar(p.headers.get('x-charla-pagina') === 'presentador' && (p.headers.get('cache-control') ?? '').includes('no-store'), '/presentador marcada y sin caché');
+    comprobar(p.headers.get('x-charla-pagina') === 'presentador' && (p.headers.get('cache-control') ?? '').includes('no-store') && (p.headers.get('cache-control') ?? '').includes('no-transform'), '/presentador marcada, sin caché y con no-transform');
     comprobar((p.headers.get('set-cookie') ?? '').startsWith('presentador-local='), 'abrir /presentador con sesión la renueva (cookie fresca)');
     const d = await get('/presentador/descargar', { headers: { cookie } });
     comprobar(d.status === 200 && (d.headers.get('content-disposition') ?? '').includes('attachment'), '/presentador/descargar entrega el archivo');
