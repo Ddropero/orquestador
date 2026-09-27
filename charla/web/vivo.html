@@ -22,22 +22,41 @@
     <p class="eyebrow">Diapositiva actual</p>
     <p class="diapo"><b id="diapo-n">–</b> <span id="diapo-total"></span></p>
     <p class="diapo-titulo" id="diapo-titulo">La charla todavía no ha empezado.</p>
+    <p class="diapo-paso" id="diapo-paso" hidden><a id="diapo-paso-enlace" href="#pasos">Ver el mapa de los siete pasos</a></p>
+  </section>
+
+  <section class="tarjeta" id="votacion" aria-labelledby="votacion-titulo" hidden>
+    <h2 id="votacion-titulo">Votación: ¿cuáles de las cinco existen?</h2>
+    <p class="nota" id="votacion-estado"></p>
+    <ol class="votos" id="votos-lista"></ol>
+    <p class="participacion" id="votacion-participacion"></p>
+    <p class="mensaje-voto" id="votacion-mensaje" role="status" aria-live="polite"></p>
   </section>
 
   <section class="tarjeta" id="resumen" hidden>
-    <h2>Lo que respondió el modelo, sin buscar</h2>
-    <div class="caja-ia">
-      <p class="sello">Texto generado por IA sin verificar · Ejercicio docente: resume la referencia 1 de la lista, por verificar en PubMed · No es evidencia clínica</p>
-      <p class="sello sello-ensayo" id="resumen-ensayo" hidden>Respuesta de ensayo</p>
-      <p class="texto-ia" id="resumen-texto"></p>
-      <p class="sello sello-fin" id="resumen-veredicto" hidden>La referencia 1 no existe: este resumen describe un artículo inventado.</p>
+    <h2 id="resumen-titulo">Lo que respondió el modelo, sin buscar</h2>
+    <p class="titular" id="resumen-titular" hidden></p>
+    <div class="comparacion" id="comparacion">
+      <div class="columna" id="col-modelo">
+        <h3 class="col-titulo" id="col-modelo-titulo" hidden>Lo que dijo el modelo, sin buscar</h3>
+        <div class="caja-ia">
+          <p class="sello" id="resumen-sello">Texto generado por IA sin verificar · Ejercicio docente: resume una referencia de la lista, por verificar en PubMed · No es evidencia clínica</p>
+          <p class="sello sello-ensayo" id="resumen-ensayo" hidden>Respuesta de ensayo</p>
+          <p class="texto-ia" id="resumen-texto"></p>
+          <p class="sello sello-fin" id="resumen-veredicto" hidden></p>
+        </div>
+      </div>
+      <div class="columna col-pubmed" id="col-pubmed" hidden>
+        <h3 class="col-titulo">Lo que encontró PubMed</h3>
+        <div id="pubmed-detalle"></div>
+      </div>
     </div>
   </section>
 
   <section class="tarjeta" id="referencias" hidden>
     <h2>¿Cuáles de las cinco existen?</h2>
     <p class="docente">Ejercicio docente: referencias fabricadas a propósito</p>
-    <p class="nota">Cada referencia aparece aquí solo cuando PubMed ya dio su veredicto.</p>
+    <p class="nota">Mientras PubMed busca, aquí se ve solo el número de la referencia y cada paso de la búsqueda: por título, por DOI y por autor. La referencia y las consultas exactas aparecen cuando PubMed da su veredicto.</p>
     <ol class="refs" id="refs"></ol>
   </section>
 
@@ -45,6 +64,19 @@
     <h2>Evidentia: ¿miel o sulfadiazina de plata?</h2>
     <p class="nota">Etapas del sistema. Lo mismo, paso a paso, lo puede hacer usted con PubMed, Elicit, Consensus o Scite. El resultado no ha sido revisado por un humano y no es una recomendación clínica.</p>
     <ol class="etapas" id="etapas"></ol>
+    <div class="embudo-caja" id="embudo-caja">
+      <h3>El embudo, en cifras</h3>
+      <p class="vacio" id="embudo-espera">Las cifras aparecen aquí cuando Evidentia termine.</p>
+      <p class="ensayo" id="embudo-ensayo" hidden></p>
+      <ol class="embudo" id="embudo" hidden></ol>
+      <p class="nota" id="embudo-nota">Solo cifras: el texto del resultado no se muestra aquí porque ningún humano lo ha revisado.</p>
+    </div>
+  </section>
+
+  <section class="tarjeta" id="pasos" aria-labelledby="pasos-titulo" hidden>
+    <h2 id="pasos-titulo">Los siete pasos, con su prompt</h2>
+    <p class="nota">La IA propone, usted verifica. Abra cada paso para ver qué hace la IA, qué le toca comprobar a usted y el prompt para copiar.</p>
+    <div class="mapa" id="mapa-pasos"></div>
   </section>
 
   <section class="tarjeta" id="avisos" hidden>
@@ -64,15 +96,16 @@
     <ul class="lineas-rojas" id="lineas-rojas"></ul>
     <h3>Guías de reporte</h3>
     <ul class="guias" id="guias"></ul>
-    <div id="prompts-kit" hidden>
+    <div id="kit-prompts" hidden>
       <h3>Prompts para cada paso</h3>
-      <ul class="prompts" id="prompts"></ul>
+      <p class="nota-kit">Están en el <a href="#pasos">mapa de los siete pasos</a>, cada uno con su botón para copiarlo.</p>
     </div>
   </section>
 </main>
 
 <footer class="pie">
-  <p>Página de solo lectura. No guarda datos de quien la abre.</p>
+  <p>Esta página solo envía una cosa: su voto, si decide votar. Su voto es anónimo: solo se cuentan los totales.</p>
+  <p>Para no contar dos veces el mismo voto, este celular guarda un código al azar que no lo identifica.</p>
   <p>Las referencias fabricadas de esta página son material docente: no las cite.</p>
 </footer>
 

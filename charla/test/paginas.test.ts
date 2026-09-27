@@ -66,6 +66,19 @@ describe('/presentador: la presentación portada sin cambios visuales', () => {
     expect(notaDe(p[9]!)).toContain('PDF del ensayo');
   });
 
+  it('la nota de la 3 deja claro que la votación del celular reemplaza las manos, y el README dice lo mismo', () => {
+    const b = secciones(BASE);
+    const p = secciones(PRESENTADOR);
+    const anadido = notaDe(p[2]!).slice(notaDe(b[2]!).length);
+    const readme = leer('README.md');
+    for (const frase of ['reemplaza las manos por cada una', 'una sola mano alzada (¿cuántas de las cinco existen?)', 'cierra la votación y verifica']) {
+      expect(anadido).toContain(frase);
+      expect(readme).toContain(frase);
+    }
+    // Las manos alzadas quedan como plan B, después de los pasos con el sistema.
+    expect(anadido.indexOf('Solo si el público no tiene red')).toBeGreaterThan(anadido.indexOf('(3)'));
+  });
+
   it('conserva el CSS de la base completo', () => {
     const css = /<style>\n  :root\{[\s\S]*?<\/style>/.exec(BASE)![0];
     expect(PRESENTADOR).toContain(css);
@@ -114,6 +127,17 @@ describe('/vivo: la página del público', () => {
     expect(scripts).toHaveLength(0);
     expect(VIVO_HTML).not.toMatch(/\sstyle=/);
     expect(VIVO_HTML).not.toMatch(/\son[a-z]+=/);
+  });
+
+  it('no escribe a mano qué referencia resume el modelo: sale de los datos', () => {
+    expect(VIVO_HTML).not.toMatch(/referencia \d/i);
+    expect(VIVO_JS).not.toMatch(/referencia [0-9]/i);
+    expect(VIVO_JS).toContain('DATOS.refResumen');
+  });
+
+  it('el mapa de los siete pasos y su atajo en el kit empiezan ocultos: aparecen al llegar a su diapositiva', () => {
+    expect(VIVO_HTML).toMatch(/<section class="tarjeta" id="pasos"[^>]* hidden>/);
+    expect(VIVO_HTML).toMatch(/<div id="kit-prompts" hidden>/);
   });
 
   it('lleva la etiqueta de ejercicio docente', () => {

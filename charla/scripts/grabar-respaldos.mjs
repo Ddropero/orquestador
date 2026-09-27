@@ -3,7 +3,8 @@
  * Graba los respaldos durante el ensayo general, contra el Worker desplegado:
  *   - la respuesta de Claude al prompt fijo,
  *   - los resultados de PubMed para las cinco referencias,
- *   - el runId del último resultado completo de Evidentia.
+ *   - el runId del último resultado completo de Evidentia y las cifras de su embudo
+ *     (lo que /vivo muestra con la etiqueta del ensayo si Evidentia falla en vivo).
  *
  * Uso:
  *   PRESENTER_TOKEN=... node scripts/grabar-respaldos.mjs https://charla.davidduque.com
@@ -43,6 +44,15 @@ async function ndjson(ruta) {
   return mensajes;
 }
 
+/** Solo los enteros del embudo que la sala sabe difundir (CAMPOS_EMBUDO de src/eventos.ts). */
+const CAMPOS_EMBUDO = ['pubmed', 'europepmc', 'unicas', 'comprobadas', 'retractadas', 'afirmaciones', 'escaladas'];
+function cifrasValidas(c) {
+  if (!c || typeof c !== 'object') return null;
+  const out = {};
+  for (const k of CAMPOS_EMBUDO) if (Number.isInteger(c[k]) && c[k] >= 0 && c[k] < 1_000_000) out[k] = c[k];
+  return Object.keys(out).length ? out : null;
+}
+
 function hoyBogota() {
   return new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
 }
@@ -73,6 +83,8 @@ try {
   for (const x of m) {
     if (x.t !== 'evento') continue;
     const e = x.evento;
+    // El flujo también trae `pubmed_buscando` (el paso en curso): el respaldo solo guarda consultas y veredictos.
+    if (e.tipo !== 'pubmed_consulta' && e.tipo !== 'pubmed_veredicto') continue;
     const r = porRef.get(e.ref) ?? { ref: e.ref, consultas: [], existe: false };
     if (e.tipo === 'pubmed_consulta') r.consultas.push({ via: e.via, resultados: e.resultados, coincide: e.coincide });
     if (e.tipo === 'pubmed_veredicto') {
@@ -96,8 +108,12 @@ try {
   if (!ev || !ev.terminado || ev.resultado !== 'completo') {
     throw new Error('no hay un resultado completo de Evidentia; lance la pregunta desde /presentador y espere');
   }
-  nuevo.evidentia = { runId: ev.runId, fecha: hoy };
-  console.log(`Evidentia: grabado (${ev.runId}).`);
+  const cifras = cifrasValidas(ev.cifras);
+  nuevo.evidentia = { runId: ev.runId, fecha: hoy, ...(cifras ? { cifras } : {}) };
+  console.log(`Evidentia: grabado (${ev.runId}${cifras ? `; embudo: ${Object.entries(cifras).map(([k, v]) => `${k} ${v}`).join(', ')}` : ''}).`);
+  if (!cifras) {
+    problemas.push('Evidentia se grabó sin las cifras del embudo: si falla en vivo, /vivo no tendrá embudo del ensayo. Lance la pregunta otra vez, espere a que termine y vuelva a grabar.');
+  }
 } catch (e) {
   problemas.push(`Evidentia no se grabó: ${e.message}. Se conserva el respaldo anterior.`);
 }

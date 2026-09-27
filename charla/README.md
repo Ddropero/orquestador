@@ -99,7 +99,7 @@ Después del 30 de septiembre solo se corrigen errores bloqueantes.
 
 - Antes de subir: `/presentador` (eso renueva la sesión), **C**, «Lanzar la pregunta de la miel». Cierre el panel.
 - Diapositiva 1: invite a escanear el QR o a escribir la dirección; el panel muestra cuántos están conectados.
-- Diapositiva 3: pulse el primer botón (Claude) y lea la lista en forma corta mientras responde; una sola votación; después el segundo botón (PubMed). Si a los 8 s no ha llegado nada, aparece el botón «Mostrar la respuesta del ensayo»; a los 25 s el respaldo entra solo.
+- Diapositiva 3: la votación en el celular reemplaza las manos por cada una. (1) **C** → «Abrir la votación» y pida que voten; (2) primer botón (Claude) y, mientras responde, lea la lista en forma corta; (3) segundo botón (PubMed): cierra la votación y verifica. Solo si el público no tiene red o no hay tiempo: una sola mano alzada (¿cuántas de las cinco existen?). Si a los 8 s no ha llegado nada, aparece el botón «Mostrar la respuesta del ensayo»; a los 25 s el respaldo entra solo. Pasar a la diapositiva 4 también cierra la votación; con los veredictos a la vista no se vuelve a abrir sin reiniciar la sala.
 - Diapositiva 10: **C** → «Abrir el resultado en vivo» (o el del ensayo si no terminó). Sin red, ninguno de los dos abre: el PDF del ensayo en el escritorio.
 - El punto de la barra inferior: verde = conectado; dorado = sin conexión (las demos usan los respaldos); rojo = la sesión venció (abra `/presentador` en otra pestaña y vuelva a entrar; esta sigue con los respaldos).
 - Teclas: ← → cambian de diapositiva, **N** notas, **C** controles.

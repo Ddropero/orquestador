@@ -46,6 +46,11 @@ export const DIAPOSITIVAS: readonly string[] = contenidoJson.diapositivas;
 export const RESUMEN = contenidoJson.resumen;
 export const PREGUNTA_EVIDENTIA = contenidoJson.evidentia.pregunta;
 export const PASOS = contenidoJson.pasos.lista;
+/**
+ * La diapositiva de la demostración 1 (la lista de cinco, `id="demo"` en la base).
+ * La votación del público es sobre esa lista: pasar a una diapositiva posterior la cierra.
+ */
+export const DIAPOSITIVA_DEMO = 3;
 
 export const CONFIG = configJson;
 

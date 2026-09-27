@@ -297,6 +297,8 @@
       clearInterval(aviso);
       btnRespaldoPubmed.hidden = true;
       btnVerify.disabled = false;
+      // Con los veredictos a la vista, el panel apaga «Abrir la votación».
+      releerTrasVerificar();
     }
     function usarRespaldo(motivo){
       if (terminado) return;
@@ -304,7 +306,7 @@
       controlador.abort();
       REFS.forEach(function(r){ if (!conVeredicto[r.n]) pintarRespaldoPubmed(r.n); });
       status.textContent = motivo;
-      if (!SIN_SERVIDOR) api("/api/sala/respaldo", { method: "POST", cuerpo: { tipo: "pubmed" } }).catch(nada);
+      if (!SIN_SERVIDOR) api("/api/sala/respaldo", { method: "POST", cuerpo: { tipo: "pubmed" } }).then(releerTrasVerificar).catch(nada);
     }
     btnRespaldoPubmed.onclick = function(){ usarRespaldo("Se muestran los resultados del ensayo."); };
 
@@ -320,12 +322,28 @@
         });
       }
       marcarRed("ok");
+      var primerMensaje = true;
       return leerNdjson(res, function(m){
         if (terminado) return;
         rearmar();
+        // La sala cierra la votación antes de la primera consulta: con el primer
+        // mensaje ya se pueden leer sus totales finales.
+        if (primerMensaje) { primerMensaje = false; releerVotacionSiAbierta(); }
         if (m.t === "evento" && m.evento) {
           var e = m.evento;
-          if (e.tipo === "pubmed_consulta") {
+          if (e.tipo === "pubmed_buscando") {
+            // La consulta que va a salir. Solo cambia el texto de la celda, que ya
+            // decía «Buscando…»: la diapositiva se ve igual.
+            var b = celda(e.ref);
+            var via = VIA_TEXTO[e.via];
+            if (b && via && consultas[e.ref] && !conVeredicto[e.ref]) {
+              var previas = consultas[e.ref].filter(function(q){ return q.via !== e.via; });
+              b.className = "verdict wait";
+              b.textContent = previas.length
+                ? "Buscando… " + textoConsultas(previas) + " · ahora por " + via + "…"
+                : "Buscando por " + via + "…";
+            }
+          } else if (e.tipo === "pubmed_consulta") {
             var lista = consultas[e.ref].filter(function(q){ return q.via !== e.via; });
             lista.push(e);
             consultas[e.ref] = lista;
@@ -391,12 +409,14 @@
       filaEstado("Copia sin red: las demos muestran los resultados del ensayo.", "alerta");
       return Promise.resolve();
     }
+    var turno = ++turnoVotacion;
     return api("/api/presentador/estado").then(function(r){
       if (r.status === 401) { marcarRed("sesion"); throw new Error("sesion"); }
       if (!r.ok) throw new Error("estado");
       return r.json();
     }).then(function(d){
       marcarRed("ok");
+      estadoVotacionLeido(turno, d);
       listaEstado.textContent = "";
       var vence = d.sesion && d.sesion.vence ? new Date(d.sesion.vence) : null;
       if (vence) {
@@ -415,6 +435,7 @@
       mostrarEvidentia(d.evidentia);
     }).catch(function(e){
       if (String(e && e.message) !== "sesion") marcarRed("error");
+      estadoVotacionLeido(turno, null, String(e && e.message));
       listaEstado.textContent = "";
       filaEstado(String(e && e.message) === "sesion"
         ? "La sesión venció. Abra /presentador en otra pestaña y vuelva a entrar; esta sigue funcionando con los respaldos."
@@ -440,6 +461,159 @@
     }).then(function(){ b.disabled = false; });
   };
 
+  /* ---------- votación del público ---------- */
+  // El público vota en /vivo; aquí solo se abre, se cierra y se leen los totales,
+  // que llegan con el resto del estado del panel (GET /api/presentador/estado).
+  var votAbrir = document.getElementById("c-votacion-abrir");
+  var votCerrar = document.getElementById("c-votacion-cerrar");
+  var votEstado = document.getElementById("c-votacion-estado");
+  var votDisponible = false;   // el último estado llegó: hay servidor y sesión
+  var votEnviando = false;
+  var ultimaVotacion = null;   // la última votación pintada, para saber si seguía abierta
+  // Un aviso sobre la votación («ya estaba abierta», «no se pudo cerrar»). Se pinta
+  // encima mientras la votación siga igual (mismo estado y ronda); si cambia, sobra.
+  var notaVotacion = null;
+  // Cada lectura del estado y cada envío toman un turno; solo la lectura del turno
+  // vigente pinta la votación. Así una lectura lenta que salió antes de abrir no
+  // vuelve a poner «Sin votación todavía» encima de la votación recién abierta.
+  var turnoVotacion = 0;
+  var SESION_VOTACION = "La sesión venció: vuelva a entrar en /presentador para abrir o cerrar la votación.";
+  var SIN_RED_VOTACION = "Sin conexión con el servidor: no se puede abrir ni cerrar la votación. El panel lo comprueba de nuevo cada 20 s; si hace falta, pida que voten a mano alzada.";
+  var VEREDICTOS_VOTACION = "El público ya ve la verificación en PubMed: para votar otra vez, reinicie la sala.";
+  // El público ya ve los veredictos: el servidor no abre otra votación (409) y aquí
+  // el botón se apaga. Llega con el estado del panel.
+  var verificacionVisible = false;
+  // Cuándo vio este panel abierta la ronda en curso: si nadie vota en 20 s, lo más
+  // probable es que el Wi-Fi del público falle aunque el del portátil funcione.
+  var abiertaDesde = { ronda: null, ts: 0 };
+  var PLAZO_SIN_VOTOS_MS = 20000;
+  var REFRESCO_ABIERTA_MS = 5000;
+
+  function botonesVotacion(){
+    votAbrir.disabled = votEnviando || !votDisponible || verificacionVisible;
+    votCerrar.disabled = votEnviando || !votDisponible;
+  }
+
+  function lineasVotacion(lineas){
+    votEstado.textContent = "";
+    lineas.forEach(function(t, k){
+      if (k > 0) votEstado.appendChild(document.createElement("br"));
+      votEstado.appendChild(document.createTextNode(t));
+    });
+  }
+
+  function plural(n, uno, varios){ return n + " " + (n === 1 ? uno : varios); }
+  function claveVotacion(v){ return v ? v.estado + ":" + v.ronda : "ninguna"; }
+
+  function mostrarVotacion(v){
+    ultimaVotacion = v && v.estado ? v : null;
+    if (notaVotacion && notaVotacion.clave !== claveVotacion(ultimaVotacion)) notaVotacion = null;
+    var lineas = notaVotacion ? [notaVotacion.texto] : [];
+    if (!ultimaVotacion) {
+      lineas.push("Sin votación todavía.");
+      if (verificacionVisible) lineas.push(VEREDICTOS_VOTACION);
+      lineasVotacion(lineas);
+      return;
+    }
+    var abierta = v.estado === "abierta";
+    if (abierta && abiertaDesde.ronda !== v.ronda) abiertaDesde = { ronda: v.ronda, ts: Date.now() };
+    lineas.push(abierta ? "Abierta · ronda " + v.ronda : "Cerrada · ronda " + v.ronda + " · totales finales");
+    if (Array.isArray(v.conteos)) {
+      var total = 0;
+      v.conteos.forEach(function(c){
+        var si = Number(c.si) || 0, no = Number(c.no) || 0;
+        total += si + no;
+        lineas.push(c.ref + ": " + si + " sí · " + no + " no");
+      });
+      lineas.push("Total: " + plural(total, "voto", "votos") +
+        (typeof v.votantes === "number" ? " de " + plural(v.votantes, "votante", "votantes") : ""));
+      // El mismo patrón que Claude y PubMed: si no llega nada, el panel lo dice solo.
+      var espera = Date.now() - abiertaDesde.ts;
+      if (abierta && total === 0 && espera >= PLAZO_SIN_VOTOS_MS) {
+        lineas.push("Nadie ha votado en " + Math.round(espera / 1000) + " s. Si el Wi-Fi de la sala falla, pida el voto a mano alzada (¿cuántas de las cinco existen?) y cierre la votación.");
+      }
+    }
+    if (!abierta && verificacionVisible) lineas.push(VEREDICTOS_VOTACION);
+    lineasVotacion(lineas);
+  }
+
+  /** Lo que devolvió GET /api/presentador/estado, o `null` si falló; `motivo` dice por qué. */
+  function estadoVotacionLeido(turno, d, motivo){
+    if (turno !== turnoVotacion || votEnviando) return;
+    if (d) {
+      votDisponible = true;
+      verificacionVisible = d.verificacionALaVista === true;
+      mostrarVotacion(d.votacion);
+    } else {
+      votDisponible = false;
+      notaVotacion = null;
+      lineasVotacion([motivo === "sesion" ? SESION_VOTACION : SIN_RED_VOTACION]);
+    }
+    botonesVotacion();
+  }
+
+  // Verificar en PubMed cierra la votación en el servidor. Si aquí seguía abierta,
+  // se vuelve a leer el estado para tener ya los totales finales.
+  function releerVotacionSiAbierta(){
+    if (!SIN_SERVIDOR && ultimaVotacion && ultimaVotacion.estado === "abierta") refrescarEstado();
+  }
+  // Al terminar la verificación (en vivo o con el ensayo): totales finales y el
+  // botón de abrir apagado, porque el público ya ve los veredictos.
+  function releerTrasVerificar(){
+    if (!SIN_SERVIDOR) refrescarEstado();
+  }
+
+  function enviarVotacion(abrir){
+    if (SIN_SERVIDOR || votEnviando) return;
+    votEnviando = true;
+    turnoVotacion++;
+    notaVotacion = null;
+    botonesVotacion();
+    lineasVotacion([abrir ? "Abriendo la votación…" : "Cerrando la votación…"]);
+    api("/api/sala/votacion", { method: "POST", cuerpo: { abrir: abrir } }).then(function(r){
+      return r.json().catch(function(){ return {}; }).then(function(d){ return { r: r, d: d }; });
+    }).then(function(x){
+      votEnviando = false;
+      if (x.r.status === 401) {
+        marcarRed("sesion");
+        votDisponible = false;
+        lineasVotacion([SESION_VOTACION]);
+      } else if (x.r.ok) {
+        marcarRed("ok");
+        votDisponible = true;
+        var v = x.d.estado ? { estado: x.d.estado, ronda: x.d.ronda } : null;
+        // Un segundo clic en «Abrir» no borra los votos: el servidor sigue con la misma ronda.
+        if (abrir && x.d.repetida) {
+          notaVotacion = { clave: claveVotacion(v), texto: "Ya estaba abierta: sigue la ronda " + x.d.ronda + " con sus votos. Para empezar de cero, ciérrela y vuelva a abrirla." };
+        }
+        // Lo que ya se sabe, mientras llegan los totales: si la votación no cambió,
+        // la que ya estaba pintada, con sus números.
+        mostrarVotacion(claveVotacion(v) === claveVotacion(ultimaVotacion) ? ultimaVotacion : v);
+      } else {
+        notaVotacion = {
+          clave: claveVotacion(ultimaVotacion),
+          texto: "No se pudo " + (abrir ? "abrir" : "cerrar") + " la votación. " + (x.d.mensaje || x.d.error || "HTTP " + x.r.status)
+        };
+        mostrarVotacion(ultimaVotacion);
+      }
+      botonesVotacion();
+      refrescarEstado();
+    }).catch(function(){
+      // Sin respuesta: se vuelve a leer el estado, que decide si los botones siguen.
+      votEnviando = false;
+      marcarRed("error");
+      lineasVotacion(["Sin conexión con el servidor: no se sabe si la votación se " + (abrir ? "abrió" : "cerró") + ". Comprobando…"]);
+      botonesVotacion();
+      refrescarEstado();
+    });
+  }
+
+  votAbrir.onclick = function(){ enviarVotacion(true); };
+  votCerrar.onclick = function(){ enviarVotacion(false); };
+  if (SIN_SERVIDOR) lineasVotacion(["Copia sin red: la votación necesita el servidor. Si hace falta, pida que voten a mano alzada."]);
+  else lineasVotacion(["Comprobando la conexión…"]);
+  botonesVotacion();
+
   document.getElementById("c-aviso").onsubmit = function(ev){
     ev.preventDefault();
     var campo = document.getElementById("c-aviso-texto");
@@ -458,6 +632,8 @@
       document.getElementById("c-aviso-estado").textContent = r.ok ? "Sala reiniciada." : "No se pudo reiniciar.";
       ultimaAvisada = 0;
       avisarDiapositiva(i + 1);
+      // Reiniciar cierra la votación y borra sus votos.
+      refrescarEstado();
     }).catch(nada);
   };
 
@@ -477,6 +653,11 @@
         : "Sin conexión: los botones mostrarán los resultados del ensayo.";
     });
     setInterval(function(){ refrescarEstado(); }, 20000);
+    // Con la votación abierta y el panel a la vista, los totales cada 5 s: así el aviso
+    // de que nadie vota aparece a tiempo.
+    setInterval(function(){
+      if (!panel.hidden && !votEnviando && ultimaVotacion && ultimaVotacion.estado === "abierta") refrescarEstado();
+    }, REFRESCO_ABIERTA_MS);
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw-presentador.js", { scope: "/presentador" }).catch(nada);
     }

@@ -9,16 +9,22 @@
  * - Las demos (Claude, PubMed, Evidentia) corren AQUÍ y no en el Worker, para que
  *   el candado de "una a la vez", el cupo diario y la difusión vivan en un solo
  *   lugar con estado consistente.
+ * - La votación del público también vive aquí. El voto llega por una ruta propia
+ *   (`POST /api/sala/voto`), nunca por el WebSocket, y solo suma en los totales:
+ *   no dispara ninguna demo ni ninguna llamada a Claude. Se cierra sola al empezar
+ *   la verificación en PubMed y al pasar de la diapositiva de la demo; no se abre
+ *   si el público ya ve los veredictos.
  *
  * El Worker solo llega a este objeto por rutas internas y después de comprobar
  * quién llama. Nada de lo de aquí es alcanzable directamente desde fuera.
  */
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from './env.js';
-import { sanear, compactar, type Evento } from './eventos.js';
+import { sanear, compactar, type Evento, type CifrasEmbudo } from './eventos.js';
 import {
   REFERENCIAS,
   DIAPOSITIVAS,
+  DIAPOSITIVA_DEMO,
   CONFIG,
   PREGUNTA_EVIDENTIA,
   promptResumen,
@@ -29,6 +35,22 @@ import { crearClienteNcbi, verificarReferencia } from './pubmed.js';
 import { generarResumen, describirError } from './claude.js';
 import * as evidentia from './evidentia.js';
 import { cargarRespaldos } from './respaldos.js';
+import {
+  abrirVotacion,
+  cerrarVotacion,
+  clavePapeleta,
+  claveRed,
+  esperaParaDifundir,
+  eventoVotos,
+  registrarVoto,
+  resumenVotacion,
+  validarVoto,
+  PREFIJO_PAPELETA,
+  PREFIJO_RED,
+  TOPE_VOTANTES,
+  type Papeleta,
+  type Votacion,
+} from './votacion.js';
 
 const MAX_CONEXIONES = 2000;
 const PLAZO_CLAUDE_MS = 25_000;
@@ -44,6 +66,8 @@ interface EstadoEvidentia {
   fallos: number;
   terminado: boolean;
   resultado?: 'completo' | 'fallido' | 'sin terminar';
+  /** El embudo del resultado, cuando terminó con cifras. */
+  cifras?: CifrasEmbudo;
 }
 
 interface Costo {
@@ -91,6 +115,21 @@ export class Sala extends DurableObject<Env> {
   private seq = 0;
   private claude: AbortController | null = null;
   private verificacion: AbortController | null = null;
+  /** La votación en curso o la última; `null` si no hay ninguna desde el último reinicio. */
+  private votacion: Votacion | null = null;
+  /** Número de la última ronda que existió. Sobrevive al reinicio: un celular con una ronda vieja no vota en la nueva. */
+  private rondaVotacion = 0;
+  /** Sal al azar de la ronda para resumir la red de cada voto (ver `claveRed`). Cambia con cada ronda. */
+  private salVotacion = '';
+  /**
+   * Difusión de totales programada (tope de una por segundo). Es un `setTimeout` y
+   * no una alarma a propósito: la alarma es una sola por objeto y ya la usa el
+   * sondeo de Evidentia, que corre a la vez que la votación. Un temporizador
+   * pendiente impide que el objeto hiberne, así que no se pierde por eso; si el
+   * objeto se desaloja por otra causa, el siguiente voto o el cierre la rehacen.
+   */
+  private temporizadorVotos: ReturnType<typeof setTimeout> | null = null;
+  private ultimaDifusionVotos = 0;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -98,6 +137,9 @@ export class Sala extends DurableObject<Env> {
     void this.ctx.blockConcurrencyWhile(async () => {
       this.historial = (await this.ctx.storage.get<Evento[]>('historial')) ?? [];
       this.seq = (await this.ctx.storage.get<number>('seq')) ?? 0;
+      this.votacion = (await this.ctx.storage.get<Votacion>('votacion')) ?? null;
+      this.rondaVotacion = (await this.ctx.storage.get<number>('votacion_ronda')) ?? 0;
+      this.salVotacion = (await this.ctx.storage.get<string>('votacion_sal')) ?? '';
     });
   }
 
@@ -124,6 +166,11 @@ export class Sala extends DurableObject<Env> {
           return this.verificar();
         case '/evidentia/lanzar':
           return this.lanzarEvidentia();
+        case '/votacion':
+          return this.votacionPresentador(await leerJson(request));
+        case '/voto':
+          // La red (IP) la pone el Worker; el cuerpo es el del público, sin tocar.
+          return this.votar(await leerJson(request), request.headers.get('x-charla-red') ?? '');
       }
     }
 
@@ -218,6 +265,9 @@ export class Sala extends DurableObject<Env> {
     }
     const ultima = [...this.historial].reverse().find((e) => e.tipo === 'diapositiva');
     if (ultima?.tipo === 'diapositiva' && ultima.n === n) return json({ ok: true, repetida: true });
+    // La votación es sobre la lista de la demo: si el ponente sigue adelante sin
+    // cerrarla, se cierra aquí, con sus totales, antes de cambiar de diapositiva.
+    if (n > DIAPOSITIVA_DEMO) await this.cerrarVotacionAbierta();
     await this.emitir({ tipo: 'diapositiva', n, titulo: DIAPOSITIVAS[n - 1] });
     return json({ ok: true });
   }
@@ -231,10 +281,16 @@ export class Sala extends DurableObject<Env> {
    * Para empezar la charla limpia después del ensayo. Conserva costos, respaldos
    * grabados y la corrida de Evidentia en curso: el ponente la lanza antes de subir
    * y limpia la sala después; olvidarla lo dejaría sin enlace en la diapositiva 10.
+   * La votación se cierra y sus votos se borran; el número de ronda sigue creciendo.
    */
   private async reiniciar(): Promise<Response> {
     this.claude?.abort('reinicio');
     this.verificacion?.abort('reinicio');
+    this.cancelarDifusionVotos();
+    this.votacion = null;
+    this.salVotacion = '';
+    await this.borrarPapeletas();
+    await this.ctx.storage.delete(['votacion', 'votacion_sal']);
     this.historial = [];
     await this.ctx.storage.put({ historial: [], seq: this.seq });
     for (const ws of this.ctx.getWebSockets()) {
@@ -262,6 +318,8 @@ export class Sala extends DurableObject<Env> {
     if (tipo === 'pubmed') {
       if (this.verificacion) this.verificacion.abort('respaldo');
       else {
+        // Verificar, aunque sea con el ensayo, revela los veredictos: se acabó votar.
+        await this.cerrarVotacionAbierta();
         await this.emitir({ tipo: 'demo_inicio', tema: 'verificacion' });
         await this.difundirRespaldoPubmed(REFERENCIAS.map((r) => r.n));
       }
@@ -290,8 +348,12 @@ export class Sala extends DurableObject<Env> {
             terminado: ev.terminado,
             resultado: ev.resultado ?? null,
             enlace: evidentia.enlaceRun(base, ev.runId),
+            cifras: ev.cifras ?? null,
           }
         : null,
+      votacion: resumenVotacion(this.votacion),
+      // Con los veredictos a la vista no se abre otra votación: el panel apaga el botón.
+      verificacionALaVista: this.verificacionALaVista(),
       enCurso: { claude: Boolean(this.claude), verificacion: Boolean(this.verificacion) },
     });
   }
@@ -408,6 +470,8 @@ export class Sala extends DurableObject<Env> {
       if (publicado) enviar({ t: 'evento', evento: publicado });
     };
 
+    // Los veredictos van a salir: la votación se cierra antes, con sus totales finales.
+    await this.cerrarVotacionAbierta();
     await this.emitir({ tipo: 'demo_inicio', tema: 'verificacion' });
 
     const cliente = crearClienteNcbi({
@@ -428,8 +492,11 @@ export class Sala extends DurableObject<Env> {
         continue;
       }
       try {
-        const v = await verificarReferencia(ref, cliente, (c) =>
-          emitirYEnviar({ tipo: 'pubmed_consulta', ref: ref.n, via: c.via, resultados: c.resultados, coincide: c.coincide }),
+        const v = await verificarReferencia(
+          ref,
+          cliente,
+          (c) => emitirYEnviar({ tipo: 'pubmed_consulta', ref: ref.n, via: c.via, resultados: c.resultados, coincide: c.coincide }),
+          (via) => emitirYEnviar({ tipo: 'pubmed_buscando', ref: ref.n, via }),
         );
         await emitirYEnviar({
           tipo: 'pubmed_veredicto',
@@ -477,6 +544,9 @@ export class Sala extends DurableObject<Env> {
         continue;
       }
       for (const c of r.consultas) {
+        // La misma secuencia que en vivo (buscando → consulta), marcada como ensayo.
+        const b = await this.emitir({ tipo: 'pubmed_buscando', ref: n, via: c.via, ensayo: true });
+        if (b && alPublicar) alPublicar(b);
         const e = await this.emitir({ tipo: 'pubmed_consulta', ref: n, via: c.via, resultados: c.resultados, coincide: c.coincide, ensayo: true });
         if (e && alPublicar) alPublicar(e);
       }
@@ -523,6 +593,7 @@ export class Sala extends DurableObject<Env> {
         estado: 'falló',
         detalle: 'Se mostrará el resultado del ensayo.',
       });
+      await this.difundirEmbudoEnsayo();
       return json({ error: 'evidentia_no_disponible', mensaje: motivo }, 502);
     }
   }
@@ -543,6 +614,7 @@ export class Sala extends DurableObject<Env> {
         estado: 'sin terminar',
         detalle: 'Se mostrará el resultado del ensayo.',
       });
+      await this.difundirEmbudoEnsayo();
       return;
     }
 
@@ -551,11 +623,16 @@ export class Sala extends DurableObject<Env> {
       est.fallos = 0;
       est.ultimo = r.estado;
       if (r.estado === 'complete') {
+        const cifras = evidentia.cifrasDelResultado(r.output);
+        const conCifras = evidentia.hayCifras(cifras) ? { cifras } : {};
         est.terminado = true;
         est.resultado = 'completo';
-        await this.ctx.storage.put({ evidentia: est, ultimo_evidentia: { runId: est.runId, fecha: hoyBogota() } });
+        Object.assign(est, conCifras);
+        await this.ctx.storage.put({ evidentia: est, ultimo_evidentia: { runId: est.runId, fecha: hoyBogota(), ...conCifras } });
         await this.emitir({ tipo: 'evidentia_etapa', etapa: evidentia.ETAPA_TRABAJO, estado: 'completada' });
         for (const e of evidentia.etapasDelResultado(r.output)) await this.emitir({ tipo: 'evidentia_etapa', ...e });
+        // El embudo va aparte y al final: solo enteros, construidos en evidentia.ts.
+        if (conCifras.cifras) await this.emitir({ ...conCifras.cifras, tipo: 'evidentia_embudo' });
         return;
       }
       if ((evidentia.TERMINALES_FALLIDOS as readonly string[]).includes(r.estado)) {
@@ -568,6 +645,7 @@ export class Sala extends DurableObject<Env> {
           estado: 'falló',
           detalle: 'Se mostrará el resultado del ensayo.',
         });
+        await this.difundirEmbudoEnsayo();
         return;
       }
     } catch (error) {
@@ -576,6 +654,169 @@ export class Sala extends DurableObject<Env> {
     }
     await this.ctx.storage.put('evidentia', est);
     await this.ctx.storage.setAlarm(Date.now() + SONDEO_EVIDENTIA_MS);
+  }
+
+  /**
+   * Evidentia no dio cifras en vivo (no lanzó, falló o no terminó): si el ensayo las
+   * grabó, se difunde ese embudo marcado como ensayo, con su fecha en /vivo.
+   */
+  private async difundirEmbudoEnsayo(): Promise<void> {
+    const cifras = (await cargarRespaldos(this.env)).evidentia?.cifras;
+    if (evidentia.hayCifras(cifras)) await this.emitir({ ...cifras, tipo: 'evidentia_embudo', ensayo: true });
+  }
+
+  // ------------------------------------------------------------------ votación
+
+  /**
+   * ¿El público ya ve la verificación en PubMed, o está a punto de verla? Entonces
+   * votar no tiene sentido: la respuesta está en la misma pantalla. Los eventos de
+   * PubMed solo desaparecen del historial con una verificación nueva (que cierra
+   * antes la votación) o al reiniciar la sala.
+   */
+  private verificacionALaVista(): boolean {
+    return (
+      this.verificacion !== null ||
+      this.historial.some((e) => e.tipo === 'pubmed_buscando' || e.tipo === 'pubmed_consulta' || e.tipo === 'pubmed_veredicto')
+    );
+  }
+
+  /** `{abrir: true}` abre una ronda nueva; `{abrir: false}` cierra la que esté abierta. */
+  private async votacionPresentador(cuerpo: Record<string, unknown>): Promise<Response> {
+    const abrir = cuerpo['abrir'];
+    if (typeof abrir !== 'boolean') return json({ error: 'abrir_invalido' }, 400);
+    if (abrir) {
+      // Un doble clic no puede borrar los votos de medio auditorio: si ya hay una
+      // abierta, sigue esa. Para empezar de cero: cerrar y volver a abrir.
+      if (this.votacion?.estado === 'abierta') {
+        return json({ ok: true, estado: 'abierta', ronda: this.votacion.ronda, repetida: true });
+      }
+      if (this.verificacionALaVista()) {
+        return json(
+          {
+            error: 'verificacion_a_la_vista',
+            mensaje: 'El público ya ve la verificación en PubMed. Para votar otra vez, reinicie la sala.',
+          },
+          409,
+        );
+      }
+      await this.abrirVotacionNueva();
+    } else {
+      await this.cerrarVotacionAbierta();
+    }
+    return json({ ok: true, estado: this.votacion?.estado ?? null, ronda: this.votacion?.ronda ?? null });
+  }
+
+  private async abrirVotacionNueva(): Promise<void> {
+    this.cancelarDifusionVotos();
+    // Las papeletas de la ronda anterior ya no sirven: sus totales quedaron difundidos.
+    await this.borrarPapeletas();
+    const v = abrirVotacion(this.rondaVotacion);
+    this.votacion = v;
+    this.rondaVotacion = v.ronda;
+    this.salVotacion = crypto.randomUUID();
+    await this.ctx.storage.put({ votacion: v, votacion_ronda: v.ronda, votacion_sal: this.salVotacion });
+    await this.emitir({ tipo: 'votacion', estado: 'abierta', ronda: v.ronda });
+    await this.difundirVotos();
+    console.log(JSON.stringify({ evento: 'votacion_abierta', ronda: v.ronda }));
+  }
+
+  /** Si hay una votación abierta, difunde sus totales finales y después el cierre. */
+  private async cerrarVotacionAbierta(): Promise<void> {
+    const v = this.votacion;
+    if (!v || v.estado !== 'abierta') return;
+    this.cancelarDifusionVotos();
+    const cerrada = cerrarVotacion(v);
+    this.votacion = cerrada;
+    await this.ctx.storage.put('votacion', cerrada);
+    await this.difundirVotos();
+    await this.emitir({ tipo: 'votacion', estado: 'cerrada', ronda: cerrada.ronda });
+    console.log(JSON.stringify({ evento: 'votacion_cerrada', ronda: cerrada.ronda, votantes: cerrada.votantes }));
+  }
+
+  /**
+   * Un voto del público, ya validado por el Worker (se vuelve a validar: la sala
+   * no se fía de nadie). Papeleta, contador de la red y totales se escriben juntos,
+   * en una sola operación: si el objeto se desaloja entre dos votos, al volver
+   * cuadran.
+   *
+   * Entre la lectura de la papeleta y su escritura solo hay operaciones de
+   * almacenamiento: la puerta de entrada del Durable Object no deja pasar otro
+   * voto en medio, así que dos votos simultáneos del mismo celular no se pisan
+   * (e2e: «votos simultáneos del mismo celular»). El resumen de la red, que no es
+   * almacenamiento, se calcula antes; `registrarVoto` vuelve a mirar la votación
+   * después.
+   */
+  private async votar(cuerpo: Record<string, unknown>, red: string): Promise<Response> {
+    const voto = validarVoto(cuerpo);
+    if (!voto) return json({ error: 'voto_invalido' }, 400);
+    // Lo barato primero: sin votación abierta de esa ronda no se lee el almacenamiento.
+    if (this.votacion?.estado !== 'abierta' || this.votacion.ronda !== voto.ronda) {
+      return json({ error: 'votacion_cerrada' }, 409);
+    }
+    const claveDeRed = await claveRed(voto.ronda, this.salVotacion, red);
+    const clave = clavePapeleta(voto.ronda, voto.votante);
+    const papeleta = await this.ctx.storage.get<Papeleta>(clave);
+    // La red solo cuenta para quien vota por primera vez en la ronda.
+    const deLaRed = papeleta === undefined ? ((await this.ctx.storage.get<number>(claveDeRed)) ?? 0) : 0;
+    const r = registrarVoto(this.votacion, papeleta, voto, TOPE_VOTANTES, deLaRed);
+    if (!r.ok) {
+      if (r.error === 'votacion_llena') {
+        console.warn(JSON.stringify({ evento: 'votacion_llena', ronda: voto.ronda, votantes: this.votacion?.votantes, deLaRed }));
+      }
+      return json({ error: r.error }, r.error === 'votacion_llena' ? 503 : 409);
+    }
+    if (r.cambio) {
+      this.votacion = r.votacion;
+      await this.ctx.storage.put({
+        [clave]: r.papeleta,
+        votacion: r.votacion,
+        ...(r.nuevo ? { [claveDeRed]: deLaRed + 1 } : {}),
+      });
+      await this.programarDifusionVotos();
+    }
+    return json({ ok: true });
+  }
+
+  /**
+   * Totales como mucho una vez por segundo: con cientos de votos por segundo, cada
+   * voto no puede ser un mensaje a cada celular. Si ya pasó el segundo, sale ya; si
+   * no, se programa una sola difusión, que llevará los totales de ese momento.
+   */
+  private async programarDifusionVotos(): Promise<void> {
+    if (this.temporizadorVotos) return;
+    const espera = esperaParaDifundir(this.ultimaDifusionVotos, Date.now());
+    if (espera === 0) {
+      await this.difundirVotos();
+      return;
+    }
+    this.temporizadorVotos = setTimeout(() => {
+      this.temporizadorVotos = null;
+      if (this.votacion?.estado !== 'abierta') return;
+      this.difundirVotos().catch((e) => {
+        console.error(JSON.stringify({ evento: 'votos_sin_difundir', motivo: e instanceof Error ? e.message : 'error' }));
+      });
+    }, espera);
+  }
+
+  /** Abierta: solo cuántos votos van. Cerrada: el desglose por referencia (ver `eventoVotos`). */
+  private async difundirVotos(): Promise<void> {
+    const v = this.votacion;
+    if (!v) return;
+    this.ultimaDifusionVotos = Date.now();
+    await this.emitir(eventoVotos(v));
+  }
+
+  private cancelarDifusionVotos(): void {
+    if (this.temporizadorVotos) clearTimeout(this.temporizadorVotos);
+    this.temporizadorVotos = null;
+  }
+
+  /** Borra todas las papeletas y los contadores por red, de cualquier ronda, en tandas de 128 claves. */
+  private async borrarPapeletas(): Promise<void> {
+    for (const prefix of [PREFIJO_PAPELETA, PREFIJO_RED]) {
+      const claves = [...(await this.ctx.storage.list({ prefix })).keys()];
+      for (let i = 0; i < claves.length; i += 128) await this.ctx.storage.delete(claves.slice(i, i + 128));
+    }
   }
 }
 

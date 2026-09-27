@@ -132,7 +132,7 @@ const CONTROLES = `
   </section>
   <section>
     <h4>Votación del público</h4>
-    <p>El público vota en su celular si cada referencia existe. Solo ve los números del 1 al 5: las citas las lee en la diapositiva. Verificar en PubMed la cierra sola.</p>
+    <p>El público vota en su celular si cada referencia existe. Solo ve los números del 1 al 5: las citas las lee en la diapositiva. Verificar en PubMed, o pasar a la diapositiva 4, la cierra sola. Con los veredictos a la vista no se vuelve a abrir: antes hay que reiniciar la sala.</p>
     <div class="fila"><button id="c-votacion-abrir" type="button">Abrir la votación</button><button class="ghost" id="c-votacion-cerrar" type="button">Cerrar la votación</button></div>
     <p id="c-votacion-estado"></p>
   </section>
@@ -161,7 +161,7 @@ const NOTAS_ANCLA = {
 export function notasExtra(textoUrl) {
   return {
     1: `Invite a escanear el QR o a escribir ${textoUrl}; pulse C y confirme que el panel muestra público conectado.`,
-    3: 'Con el sistema: abra la votación en el panel (tecla C) y pida que voten en el celular; pulse el primer botón y, mientras el modelo responde, lea la lista en forma corta. Si no hay tiempo, una sola votación a mano alzada (¿cuántas de las cinco existen?). El segundo botón cierra la votación y verifica. Si a los 8 s no llega nada aparece el botón del ensayo; a los 25 s el respaldo entra solo.',
+    3: 'Con el sistema, la votación en el celular reemplaza las manos por cada una: (1) abra la votación en el panel (tecla C) y pida que voten; (2) pulse el primer botón y, mientras el modelo responde, lea la lista en forma corta; (3) el segundo botón cierra la votación y verifica. Solo si el público no tiene red o no hay tiempo: una sola mano alzada (¿cuántas de las cinco existen?). Si a los 8 s no llega nada aparece el botón del ensayo; a los 25 s el respaldo entra solo.',
     10: 'Sin red, ninguno de los enlaces de Evidentia abre: use el PDF del ensayo guardado en el escritorio.',
   };
 }

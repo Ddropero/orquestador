@@ -60,6 +60,54 @@ describe('verificación de las cinco referencias', () => {
     }
   });
 
+  it('avisa ANTES de cada búsqueda por qué vía va, sin el término, y en orden con las consultas', async () => {
+    const { fetchImpl, llamadas } = ncbiSimulado();
+    const orden: string[] = [];
+    const ref3 = REFERENCIAS.find((r) => r.n === 3)!;
+    await verificarReferencia(
+      ref3,
+      cliente(fetchImpl),
+      (c) => {
+        orden.push(`consulta:${c.via}`);
+      },
+      (via) => {
+        // Todavía no se pidió a NCBI la búsqueda de esta vía.
+        const busquedas = llamadas.filter((l) => l.ruta === 'esearch.fcgi').length;
+        orden.push(`buscando:${via}:${busquedas}`);
+      },
+    );
+    expect(orden).toEqual([
+      'buscando:título:0',
+      'consulta:título',
+      'buscando:DOI:1',
+      'consulta:DOI',
+      'buscando:autor:2',
+      'consulta:autor',
+    ]);
+  });
+
+  it('una referencia que aparece por título no avisa de las vías que no hacen falta', async () => {
+    const { fetchImpl } = ncbiSimulado();
+    const vias: string[] = [];
+    await verificarReferencia(REFERENCIAS.find((r) => r.n === 2)!, cliente(fetchImpl), () => {}, (via) => {
+      vias.push(via);
+    });
+    expect(vias).toEqual(['título']);
+  });
+
+  it('espera a alBuscar antes de consultar, y sin alBuscar funciona igual', async () => {
+    const { fetchImpl, llamadas } = ncbiSimulado();
+    const ref1 = REFERENCIAS.find((r) => r.n === 1)!;
+    let antes = -1;
+    await verificarReferencia(ref1, cliente(fetchImpl), () => {}, async () => {
+      await new Promise((r) => setTimeout(r, 5));
+      if (antes < 0) antes = llamadas.length;
+    });
+    expect(antes).toBe(0);
+    const sin = await verificarReferencia(ref1, cliente(ncbiSimulado().fetchImpl), () => {});
+    expect(sin).toEqual(RESPALDOS.pubmed?.referencias.find((x) => x.ref === 1));
+  });
+
   it('un término que NCBI no encuentra cuenta como cero resultados, no como la búsqueda sin él', async () => {
     const { fetchImpl } = ncbiSimulado();
     const r = await cliente(fetchImpl).buscar('Moreau-Quintana[Author] AND influenza[Title/Abstract]');

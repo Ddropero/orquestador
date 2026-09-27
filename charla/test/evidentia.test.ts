@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { lanzar, consultar, etapasDelResultado, enlaceRun, ErrorEvidentia } from '../src/evidentia.js';
+import { lanzar, consultar, etapasDelResultado, cifrasDelResultado, hayCifras, enlaceRun, ErrorEvidentia } from '../src/evidentia.js';
+import { sanear } from '../src/eventos.js';
 
 /** Forma real del `output` de un run `ask` terminado, según apps/api/src/pipeline.ts de Evidentia. */
 const SALIDA = {
@@ -85,5 +86,50 @@ describe('Evidentia', () => {
     const etapas = etapasDelResultado({ retrieval: { pubmed: 'muchas' } });
     expect(etapas.find((e) => e.etapa.startsWith('Búsqueda'))).not.toHaveProperty('detalle');
     expect(etapasDelResultado(null)).toHaveLength(6);
+  });
+
+  it('las cifras del embudo salen de las mismas fuentes que las etapas', () => {
+    expect(cifrasDelResultado(SALIDA)).toEqual({
+      pubmed: 31,
+      europepmc: 12,
+      unicas: 38,
+      comprobadas: 20,
+      retractadas: 1,
+      afirmaciones: 1,
+      escaladas: 0,
+    });
+  });
+
+  it('el embudo lleva solo enteros: ningún texto del resultado, y pasa por sanear intacto', () => {
+    const cifras = cifrasDelResultado(SALIDA);
+    for (const v of Object.values(cifras)) expect(Number.isInteger(v)).toBe(true);
+    const e = sanear({ ...cifras, tipo: 'evidentia_embudo' }, 1, 1);
+    expect(e).toEqual({ ...cifras, tipo: 'evidentia_embudo', ts: 1, seq: 1 });
+    const todo = JSON.stringify(e).toLowerCase();
+    for (const prohibido of ['miel', 'sulfadiazina', 'epitelizó', 'honey', 'quemadura', 'supports']) {
+      expect(todo).not.toContain(prohibido);
+    }
+  });
+
+  it('con un resultado incompleto o raro no inventa cifras (ni ceros)', () => {
+    expect(cifrasDelResultado(null)).toEqual({});
+    expect(cifrasDelResultado('complete')).toEqual({});
+    expect(
+      cifrasDelResultado({
+        retrieval: { pubmed: 'muchas', europepmc: 12 },
+        dedupe: { unique: -3 },
+        integrity: { checked: 2.5, retracted: 0 },
+        synthesis: { afirmaciones: 'tres', escaladas: [{ texto: 'x' }, { texto: 'y' }] },
+      }),
+    ).toEqual({ europepmc: 12, retractadas: 0, escaladas: 2 });
+    expect(cifrasDelResultado({ retrieval: { pubmed: 5_000_000 } })).toEqual({});
+  });
+
+  it('un embudo vacío no se difunde', () => {
+    expect(hayCifras({})).toBe(false);
+    expect(hayCifras(null)).toBe(false);
+    expect(hayCifras(undefined)).toBe(false);
+    expect(hayCifras({ escaladas: 0 })).toBe(true);
+    expect(hayCifras(cifrasDelResultado(SALIDA))).toBe(true);
   });
 });

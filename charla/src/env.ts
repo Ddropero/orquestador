@@ -18,6 +18,8 @@ export interface Env {
   LIMITE_WS?: RateLimit;
   LIMITE_ENTRADA?: RateLimit;
   LIMITE_PRESENTADOR?: RateLimit;
+  /** El voto del público: la única escritura que /vivo hace en el servidor. */
+  LIMITE_VOTO?: RateLimit;
 
   /** Secretos. */
   ANTHROPIC_API_KEY?: string;

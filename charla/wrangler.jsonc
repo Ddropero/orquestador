@@ -36,7 +36,12 @@
     { "name": "LIMITE_LECTURA", "namespace_id": "2026100201", "simple": { "limit": 20000, "period": 60 } },
     { "name": "LIMITE_WS", "namespace_id": "2026100202", "simple": { "limit": 1500, "period": 60 } },
     { "name": "LIMITE_ENTRADA", "namespace_id": "2026100203", "simple": { "limit": 10, "period": 60 } },
-    { "name": "LIMITE_PRESENTADOR", "namespace_id": "2026100204", "simple": { "limit": 240, "period": 60 } }
+    { "name": "LIMITE_PRESENTADOR", "namespace_id": "2026100204", "simple": { "limit": 240, "period": 60 } },
+    // La votación: 600 celulares detrás de la IP del hotel, cinco votos cada uno, caben
+    // en un minuto. Este límite solo cuenta peticiones: a un script que inventa
+    // votantes lo frena la sala, con un tope de votantes nuevos por red y ronda (600,
+    // ver src/votacion.ts), y cada votante tiene una sola papeleta por ronda.
+    { "name": "LIMITE_VOTO", "namespace_id": "2026100205", "simple": { "limit": 3000, "period": 60 } }
   ],
 
   "vars": {

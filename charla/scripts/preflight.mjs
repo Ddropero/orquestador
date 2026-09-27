@@ -79,6 +79,19 @@ for (const ruta of ['/_privado/presentador.html', '/_privado/respaldos.json', '/
   r2.status === 401 ? ok('POST /api/claude/resumen sin sesión → 401') : mal(`POST /api/claude/resumen sin sesión → ${r2.status}`);
   const { res: r3 } = await medir('/api/sala/aviso', { method: 'POST', body: '{"texto":"x"}' });
   r3.status === 401 ? ok('POST /api/sala/aviso sin sesión → 401') : mal(`POST /api/sala/aviso sin sesión → ${r3.status}`);
+  const { res: r4 } = await medir('/api/sala/votacion', { method: 'POST', body: '{"abrir":true}' });
+  r4.status === 401 ? ok('POST /api/sala/votacion sin sesión → 401') : mal(`POST /api/sala/votacion sin sesión → ${r4.status}`);
+}
+
+// El voto solo se acepta desde /vivo. Desde otro origen tiene que ser 403 antes de
+// mirar el cuerpo: esta comprobación no vota nada, ni aunque hubiera una votación abierta.
+{
+  const { res } = await medir('/api/sala/voto', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: 'https://ajeno.example', 'sec-fetch-site': 'cross-site' },
+    body: JSON.stringify({ votante: 'preflight-origen-ajeno', ronda: 1, ref: 1, existe: true }),
+  });
+  res.status === 403 ? ok('POST /api/sala/voto desde otro origen → 403') : mal(`POST /api/sala/voto desde otro origen → ${res.status}`);
 }
 
 // Con el token: configuración y respaldos.
@@ -96,6 +109,12 @@ if (token) {
       ? ok(`respaldo de PubMed del ${d.respaldos.pubmed}`)
       : mal(d.respaldos.pubmed ? `el respaldo de PubMed (${d.respaldos.pubmed}) no es del ensayo general` : 'sin respaldo de PubMed grabado');
     d.respaldos.evidentia ? ok('respaldo de Evidentia grabado') : mal('sin respaldo de Evidentia grabado');
+    d.respaldos.embudoEvidentia === true
+      ? ok('el respaldo de Evidentia trae las cifras del embudo')
+      : mal('el respaldo de Evidentia no trae las cifras del embudo: /vivo no tendrá embudo si Evidentia falla (vuelva a grabar)');
+    if (!d.votacion) mal('el servidor no informa la votación del público (¿despliegue viejo?)');
+    else if (d.votacion.estado === 'abierta') mal(`la votación ${d.votacion.ronda} quedó abierta: ciérrela o reinicie la sala`);
+    else ok('ninguna votación del público abierta');
     d.evidentiaSalud === 'ok' ? ok('Evidentia responde en /health') : mal(`Evidentia: ${d.evidentiaSalud}`);
     console.log(`  Consultas a Claude hoy: ${d.claudeHoy} de ${d.limiteClaudeDiario}. Costo registrado: US$ ${d.costos.usd}.`);
   }

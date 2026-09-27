@@ -22,7 +22,10 @@
  *    comprobadas, retractadas, afirmaciones con cita, escaladas). Solo enteros: nada
  *    del texto del resultado llega al público.
  *  - `votacion` y `votos`: la votación del público sobre si cada referencia existe.
- *    Solo números de referencia y totales: ninguna cita, ningún votante.
+ *    Solo números de referencia y totales: ninguna cita, ningún votante. Mientras
+ *    la votación está abierta, `votos` lleva solo `total` (cuántos votos van); el
+ *    desglose por referencia (`conteos`) sale al cerrarla. Así ni leyendo los datos
+ *    de la página se sabe qué va ganando antes de votar.
  */
 import type { Via } from './contenido.js';
 
@@ -64,7 +67,8 @@ export type Evento =
   | (Base & { tipo: 'pubmed_buscando'; ref: number; via: Via; ensayo?: boolean })
   | (Base & { tipo: 'evidentia_embudo'; ensayo?: boolean } & CifrasEmbudo)
   | (Base & { tipo: 'votacion'; estado: EstadoVotacion; ronda: number })
-  | (Base & { tipo: 'votos'; ronda: number; conteos: ConteoVotos[] });
+  | (Base & { tipo: 'votos'; ronda: number; conteos: ConteoVotos[] })
+  | (Base & { tipo: 'votos'; ronda: number; total: number });
 
 /** Un evento antes de que la sala le ponga `ts` y `seq`. */
 export type EventoNuevo = Evento extends infer E ? (E extends Evento ? Omit<E, 'ts' | 'seq'> : never) : never;
@@ -222,8 +226,14 @@ export function sanear(entrada: unknown, ts: number, seq: number): Evento | null
     }
     case 'votos': {
       const ronda = entero(e['ronda'], 1, Number.MAX_SAFE_INTEGER);
+      if (ronda === null) return null;
       const lista = e['conteos'];
-      if (ronda === null || !Array.isArray(lista) || lista.length !== TOTAL_REFERENCIAS) return null;
+      // Sin desglose (votación abierta): solo cuántos votos van.
+      if (lista === undefined) {
+        const total = entero(e['total'], 0, CIFRA_MAX * TOTAL_REFERENCIAS);
+        return total === null ? null : { ...base, tipo: 'votos', ronda, total };
+      }
+      if (!Array.isArray(lista) || lista.length !== TOTAL_REFERENCIAS) return null;
       const conteos: ConteoVotos[] = [];
       for (const c of lista) {
         if (!c || typeof c !== 'object') return null;

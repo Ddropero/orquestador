@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { REFERENCIAS, DIAPOSITIVAS, promptResumen, fechaLarga, hoyBogota, CONFIG, type Respaldos } from '../src/contenido.js';
+import { REFERENCIAS, DIAPOSITIVAS, DIAPOSITIVA_DEMO, promptResumen, fechaLarga, hoyBogota, CONFIG, type Respaldos } from '../src/contenido.js';
 import respaldosJson from '../datos/respaldos.json';
 
 const RESPALDOS = respaldosJson as unknown as Respaldos;
@@ -89,6 +89,13 @@ describe('las diapositivas', () => {
       }
       expect(textoPlano(h![1]!)).toBe(DIAPOSITIVAS[i]);
     });
+  });
+
+  it('la diapositiva de la demo (la que cierra la votación al pasarla) es la de la lista de cinco', () => {
+    const secciones = seccionesDe(BASE);
+    expect(secciones[DIAPOSITIVA_DEMO - 1]).toContain('id="demo"');
+    expect(secciones.filter((s) => s.includes('id="demo"'))).toHaveLength(1);
+    expect(DIAPOSITIVAS[DIAPOSITIVA_DEMO - 1]!.startsWith('Demostración')).toBe(true);
   });
 });
 

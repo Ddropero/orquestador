@@ -12,6 +12,7 @@
  * `GET /runs/:id` no informa el paso en curso: mientras corre solo se sabe que
  * corre. Las etapas finas salen del `output` cuando termina.
  */
+import type { CifrasEmbudo } from './eventos.js';
 
 export const TERMINALES_FALLIDOS = ['errored', 'terminated'] as const;
 export const ETAPA_ENVIO = 'Pregunta enviada a Evidentia';
@@ -150,4 +151,32 @@ export function etapasDelResultado(output: unknown): EtapaDerivada[] {
 
   etapas.push(conDetalle('Resultado', 'No revisado por un humano: no es una recomendación clínica.'));
   return etapas;
+}
+
+/**
+ * Las cifras del embudo, de las mismas fuentes que `etapasDelResultado`. Solo
+ * enteros válidos: una cifra ausente o rara no se pone (ni se inventa un cero), y
+ * de la síntesis solo se cuentan las afirmaciones y las escaladas, sin su texto.
+ */
+export function cifrasDelResultado(output: unknown): CifrasEmbudo {
+  const o = (output && typeof output === 'object' ? output : {}) as Record<string, any>;
+  const cifras: CifrasEmbudo = {};
+  const poner = (campo: keyof CifrasEmbudo, valor: unknown): void => {
+    const n = conteo(valor);
+    if (n !== null) cifras[campo] = n;
+  };
+  poner('pubmed', o['retrieval']?.['pubmed']);
+  poner('europepmc', o['retrieval']?.['europepmc']);
+  poner('unicas', o['dedupe']?.['unique']);
+  poner('comprobadas', o['integrity']?.['checked']);
+  poner('retractadas', o['integrity']?.['retracted']);
+  const s = o['synthesis'];
+  if (Array.isArray(s?.['afirmaciones'])) poner('afirmaciones', (s['afirmaciones'] as unknown[]).length);
+  if (Array.isArray(s?.['escaladas'])) poner('escaladas', (s['escaladas'] as unknown[]).length);
+  return cifras;
+}
+
+/** ¿Trae el embudo al menos una cifra? Un embudo vacío no se difunde. */
+export function hayCifras(c: CifrasEmbudo | null | undefined): c is CifrasEmbudo {
+  return Boolean(c) && Object.values(c as CifrasEmbudo).some((v) => typeof v === 'number');
 }

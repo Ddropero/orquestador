@@ -188,14 +188,20 @@ export function pasosDeBusqueda(ref: Referencia): { via: Via; termino: string }[
  * Verifica una referencia. Avisa de cada consulta según ocurre para que el público
  * vea el proceso, no solo el veredicto. Lanza `ErrorNcbi` si PubMed no contesta:
  * quien llama decide pasar al respaldo.
+ *
+ * `alBuscar` (opcional) se llama justo ANTES de cada búsqueda, con la vía: así el
+ * público ve qué se está consultando mientras NCBI tarda. Solo la vía: el término
+ * de búsqueda no sale de aquí.
  */
 export async function verificarReferencia(
   ref: Referencia,
   cliente: ClienteNcbi,
   alConsultar: (c: ConsultaRegistrada) => void | Promise<void>,
+  alBuscar?: (via: Via) => void | Promise<void>,
 ): Promise<VerificacionRegistrada> {
   const consultas: ConsultaRegistrada[] = [];
   for (const paso of pasosDeBusqueda(ref)) {
+    if (alBuscar) await alBuscar(paso.via);
     const { total, ids } = await cliente.buscar(paso.termino);
     let pmid: string | undefined;
     if (ids.length > 0) {

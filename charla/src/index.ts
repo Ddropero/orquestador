@@ -2,7 +2,9 @@
  * Worker de la charla «Del caso clínico al PubMed».
  *
  * Tres públicos, tres niveles de acceso:
- *  - Público (QR): /vivo y la lectura de la sala. Solo lectura, con límite de tasa.
+ *  - Público (QR): /vivo y la lectura de la sala, con límite de tasa. Su única
+ *    escritura es el voto (`POST /api/sala/voto`): mismo origen, cuerpo mínimo y
+ *    cupo por IP; solo suma en los totales de la sala y no llama a nada de fuera.
  *  - Presentador: /presentador y las rutas /api que cuestan dinero o cambian lo que
  *    ve el público. Exigen sesión (o Bearer) y, con cookie, mismo origen.
  *  - Nadie más: todo lo que no está en estas listas responde 404, incluidos los
@@ -28,6 +30,7 @@ import {
 } from './auth.js';
 import { permitido, ipDe } from './limite.js';
 import { json, error, demasiadas, conCabeceras, redirigir, cspVivo, CSP_ENTRAR } from './respuestas.js';
+import { interpretarVoto, leerCuerpoLimitado, MAX_CUERPO_VOTO } from './votacion.js';
 import { CSP_PRESENTADOR } from './generado/csp.js';
 
 export { Sala };
@@ -57,6 +60,7 @@ const PRESENTADOR: Record<string, string> = {
   'POST /api/sala/aviso': '/aviso',
   'POST /api/sala/respaldo': '/respaldo',
   'POST /api/sala/reiniciar': '/reiniciar',
+  'POST /api/sala/votacion': '/votacion',
   'GET /api/presentador/respaldos': '/presentador/respaldos',
   'GET /api/presentador/costos': '/presentador/costos',
 };
@@ -128,6 +132,8 @@ async function enrutar(request: Request, env: Env): Promise<Response> {
     }
   }
 
+  if (ruta === '/api/sala/voto' && metodo === 'POST') return votar(request, env, ip);
+
   // -------------------------------------------------------------- presentador
   if (ruta === '/presentador' && metodo === 'GET') {
     const quien = await identificar(request, env.PRESENTER_TOKEN, Date.now(), local);
@@ -194,6 +200,32 @@ async function enrutar(request: Request, env: Env): Promise<Response> {
   }
 
   return error(404, 'No existe esta ruta.');
+}
+
+/**
+ * El voto del público. Mismo origen (solo /vivo vota: otra página no puede votar
+ * en nombre de quien la visita), cupo por IP pensado para el Wi-Fi del hotel y
+ * cuerpo de a lo sumo 512 bytes. No invalida la caché del sondeo: con cientos de
+ * votos por segundo, cada uno despertaría la sala; los totales llegan en ≤ 1 s.
+ *
+ * El mismo origen frena a otras páginas, no a un script que fija sus cabeceras a
+ * mano, y el votante lo inventa el celular. Por eso la sala recibe también la red
+ * (la IP que ve Cloudflare) y limita cuántos votantes nuevos entran por red en cada
+ * ronda: un script desde una red no llena la votación ni deja fuera al auditorio.
+ */
+async function votar(request: Request, env: Env, ip: string): Promise<Response> {
+  if (!mismoOrigen(request)) return error(403, 'Origen no permitido.');
+  if (!(await permitido(env.LIMITE_VOTO, `voto:${ip}`))) return demasiadas();
+  const texto = await leerCuerpoLimitado(request, MAX_CUERPO_VOTO);
+  if (texto === null) return error(413, 'Cuerpo demasiado grande.');
+  const voto = interpretarVoto(texto);
+  if (!voto) return error(400, 'voto_invalido');
+  const res = await sala(env).fetch('https://sala/voto', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-charla-red': ip },
+    body: JSON.stringify(voto),
+  });
+  return conCabeceras(res, { 'cache-control': 'no-store' });
 }
 
 async function servirPublico(env: Env, url: URL, archivo: string): Promise<Response> {
@@ -280,6 +312,8 @@ async function estadoPresentador(env: Env, quien: Identidad): Promise<Response> 
       claude: respaldos.claude?.fecha ?? null,
       pubmed: respaldos.pubmed?.fecha ?? null,
       evidentia: respaldos.evidentia?.runId ?? null,
+      // Sin estas cifras, si Evidentia falla en vivo, /vivo no tiene embudo del ensayo que mostrar.
+      embudoEvidentia: Boolean(respaldos.evidentia?.cifras && Object.keys(respaldos.evidentia.cifras).length > 0),
     },
     evidentiaSalud,
   });

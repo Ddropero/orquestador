@@ -79,3 +79,104 @@ describe('compactar el historial', () => {
     expect(g).toHaveLength(10);
   });
 });
+
+describe('sanear los eventos del proceso y de la votación', () => {
+  it('pubmed_buscando: solo referencia y vía, nunca el término ni el DOI', () => {
+    const e = sanear({ tipo: 'pubmed_buscando', ref: 3, via: 'DOI', termino: '"10.1093/cid/ciad1893"[aid]', doi: '10.1093/cid/ciad1893' }, 1, 1);
+    expect(e).toEqual({ tipo: 'pubmed_buscando', ref: 3, via: 'DOI', ts: 1, seq: 1 });
+    expect(JSON.stringify(e)).not.toContain('10.1093');
+    expect(sanear({ tipo: 'pubmed_buscando', ref: 3, via: 'autor', ensayo: true }, 1, 1)).toHaveProperty('ensayo', true);
+    expect(sanear({ tipo: 'pubmed_buscando', ref: 3, via: 'autor', ensayo: 'sí' }, 1, 1)).not.toHaveProperty('ensayo');
+    expect(sanear({ tipo: 'pubmed_buscando', ref: 0, via: 'título' }, 1, 1)).toBeNull();
+    expect(sanear({ tipo: 'pubmed_buscando', ref: 6, via: 'título' }, 1, 1)).toBeNull();
+    expect(sanear({ tipo: 'pubmed_buscando', ref: 1, via: 'Google' }, 1, 1)).toBeNull();
+  });
+
+  it('evidentia_embudo: solo enteros conocidos; nada de texto', () => {
+    const e = sanear({ tipo: 'evidentia_embudo', pubmed: 31, europepmc: 12, unicas: 38, escaladas: 0, pico: 'miel', afirmacion: 'La miel…' }, 1, 1);
+    expect(e).toEqual({ tipo: 'evidentia_embudo', pubmed: 31, europepmc: 12, unicas: 38, escaladas: 0, ts: 1, seq: 1 });
+    expect(sanear({ tipo: 'evidentia_embudo', retractadas: 1, ensayo: true }, 1, 1)).toMatchObject({ retractadas: 1, ensayo: true });
+    // Una cifra rara invalida el evento entero: no se difunde a medias.
+    for (const malo of [-1, 2.5, '31', Number.NaN, 2_000_000]) {
+      expect(sanear({ tipo: 'evidentia_embudo', pubmed: 31, unicas: malo }, 1, 1)).toBeNull();
+    }
+    expect(sanear({ tipo: 'evidentia_embudo' }, 1, 1)).toBeNull();
+    expect(sanear({ tipo: 'evidentia_embudo', pubmed: null, ensayo: true }, 1, 1)).toBeNull();
+  });
+
+  it('votacion: estado y ronda, nada más', () => {
+    expect(sanear({ tipo: 'votacion', estado: 'abierta', ronda: 2, votantes: ['x'] }, 1, 1)).toEqual({ tipo: 'votacion', estado: 'abierta', ronda: 2, ts: 1, seq: 1 });
+    expect(sanear({ tipo: 'votacion', estado: 'pausada', ronda: 2 }, 1, 1)).toBeNull();
+    expect(sanear({ tipo: 'votacion', estado: 'cerrada', ronda: 0 }, 1, 1)).toBeNull();
+    expect(sanear({ tipo: 'votacion', estado: 'cerrada' }, 1, 1)).toBeNull();
+  });
+
+  it('votos: un conteo por cada una de las cinco referencias, ordenados, sin votantes', () => {
+    const conteos = [5, 4, 3, 2, 1].map((ref) => ({ ref, si: ref, no: 10 - ref, votante: 'a1B2c3D4e5F6g7H8' }));
+    const e = sanear({ tipo: 'votos', ronda: 1, conteos }, 1, 1);
+    expect(e).toEqual({
+      tipo: 'votos',
+      ronda: 1,
+      conteos: [1, 2, 3, 4, 5].map((ref) => ({ ref, si: ref, no: 10 - ref })),
+      ts: 1,
+      seq: 1,
+    });
+    expect(JSON.stringify(e)).not.toContain('a1B2c3D4e5F6g7H8');
+    const cinco = [1, 2, 3, 4, 5].map((ref) => ({ ref, si: 0, no: 0 }));
+    expect(sanear({ tipo: 'votos', ronda: 1, conteos: cinco.slice(0, 4) }, 1, 1)).toBeNull();
+    expect(sanear({ tipo: 'votos', ronda: 1, conteos: [...cinco.slice(0, 4), { ref: 1, si: 0, no: 0 }] }, 1, 1)).toBeNull();
+    expect(sanear({ tipo: 'votos', ronda: 1, conteos: [...cinco.slice(0, 4), { ref: 5, si: -1, no: 0 }] }, 1, 1)).toBeNull();
+    expect(sanear({ tipo: 'votos', ronda: 1, conteos: [...cinco.slice(0, 4), null] }, 1, 1)).toBeNull();
+    expect(sanear({ tipo: 'votos', ronda: 0, conteos: cinco }, 1, 1)).toBeNull();
+  });
+
+  it('votos sin desglose (votación abierta): solo cuántos van, sin nada más', () => {
+    expect(sanear({ tipo: 'votos', ronda: 2, total: 44, si: 30, votante: 'a1B2c3D4e5F6g7H8' }, 1, 1)).toEqual({ tipo: 'votos', ronda: 2, total: 44, ts: 1, seq: 1 });
+    expect(sanear({ tipo: 'votos', ronda: 2, total: 0 }, 1, 1)).toEqual({ tipo: 'votos', ronda: 2, total: 0, ts: 1, seq: 1 });
+    for (const malo of [-1, 2.5, '44', null, Number.NaN, 10_000_000]) expect(sanear({ tipo: 'votos', ronda: 2, total: malo }, 1, 1)).toBeNull();
+    expect(sanear({ tipo: 'votos', ronda: 2 }, 1, 1)).toBeNull();
+    expect(sanear({ tipo: 'votos', ronda: 0, total: 1 }, 1, 1)).toBeNull();
+    // Con desglose, el total sobra: se descarta y queda solo lo del contrato.
+    const cinco = [1, 2, 3, 4, 5].map((ref) => ({ ref, si: 1, no: 0 }));
+    expect(sanear({ tipo: 'votos', ronda: 2, conteos: cinco, total: 5 }, 1, 1)).toEqual({ tipo: 'votos', ronda: 2, conteos: cinco, ts: 1, seq: 1 });
+    // Unos conteos inválidos no se salvan con un total.
+    expect(sanear({ tipo: 'votos', ronda: 2, conteos: cinco.slice(0, 4), total: 4 }, 1, 1)).toBeNull();
+  });
+});
+
+describe('compactar los eventos nuevos', () => {
+  const ev = (seq: number, e: Record<string, unknown>) => sanear(e, seq, seq) as Evento;
+  const ceros = [1, 2, 3, 4, 5].map((ref) => ({ ref, si: 0, no: 0 }));
+
+  it('del paso en curso de PubMed solo queda el último, y una verificación nueva lo borra', () => {
+    let h: Evento[] = [];
+    h = compactar(h, ev(1, { tipo: 'demo_inicio', tema: 'verificacion' }));
+    h = compactar(h, ev(2, { tipo: 'pubmed_buscando', ref: 1, via: 'título' }));
+    h = compactar(h, ev(3, { tipo: 'pubmed_consulta', ref: 1, via: 'título', resultados: 0 }));
+    h = compactar(h, ev(4, { tipo: 'pubmed_buscando', ref: 1, via: 'DOI' }));
+    expect(h.map((e) => e.seq)).toEqual([1, 3, 4]);
+    h = compactar(h, ev(5, { tipo: 'demo_inicio', tema: 'verificacion' }));
+    expect(h.map((e) => e.seq)).toEqual([5]);
+  });
+
+  it('del embudo solo queda el último, y una corrida nueva de Evidentia lo borra', () => {
+    let h: Evento[] = [];
+    h = compactar(h, ev(1, { tipo: 'evidentia_embudo', pubmed: 1, ensayo: true }));
+    h = compactar(h, ev(2, { tipo: 'evidentia_embudo', pubmed: 31 }));
+    expect(h.map((e) => e.seq)).toEqual([2]);
+    h = compactar(h, ev(3, { tipo: 'demo_inicio', tema: 'evidentia' }));
+    expect(h.map((e) => e.seq)).toEqual([3]);
+  });
+
+  it('de la votación quedan su último estado y sus últimos totales; una ronda nueva empieza de cero', () => {
+    let h: Evento[] = [];
+    h = compactar(h, ev(1, { tipo: 'votacion', estado: 'abierta', ronda: 1 }));
+    h = compactar(h, ev(2, { tipo: 'votos', ronda: 1, total: 0 }));
+    h = compactar(h, ev(3, { tipo: 'votos', ronda: 1, conteos: ceros }));
+    h = compactar(h, ev(4, { tipo: 'votacion', estado: 'cerrada', ronda: 1 }));
+    // Al cerrar se conservan los totales de esa ronda.
+    expect(h.map((e) => e.seq)).toEqual([3, 4]);
+    h = compactar(h, ev(5, { tipo: 'votacion', estado: 'abierta', ronda: 2 }));
+    expect(h.map((e) => e.seq)).toEqual([5]);
+  });
+});
