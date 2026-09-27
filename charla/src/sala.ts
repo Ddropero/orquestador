@@ -32,7 +32,7 @@ import {
   type VerificacionRegistrada,
 } from './contenido.js';
 import { crearClienteNcbi, verificarReferencia } from './pubmed.js';
-import { generarResumen, describirError } from './claude.js';
+import { generarResumen, describirError, detalleError } from './claude.js';
 import * as evidentia from './evidentia.js';
 import { cargarRespaldos } from './respaldos.js';
 import {
@@ -427,7 +427,7 @@ export class Sala extends DurableObject<Env> {
           : razon === 'plazo'
             ? 'Claude tardó más de 25 segundos.'
             : `Claude no respondió: ${describirError(error)}.`;
-      console.error(JSON.stringify({ evento: 'claude_fallo', motivo: describirError(error), razon, ms: Date.now() - inicio }));
+      console.error(JSON.stringify({ evento: 'claude_fallo', motivo: describirError(error), ...detalleError(error), razon, ms: Date.now() - inicio }));
       await this.respaldoResumen(enviar, motivo);
     } finally {
       clearTimeout(plazo);

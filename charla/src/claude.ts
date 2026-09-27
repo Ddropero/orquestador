@@ -75,6 +75,16 @@ export async function generarResumen(o: OpcionesResumen): Promise<ResultadoResum
 }
 
 /** Descripción para el registro. Nunca incluye la clave ni el prompt. */
+/**
+ * El mensaje de Anthropic y el id de la petición, solo para el registro del Worker
+ * (`wrangler tail`): un 400 puede ser saldo agotado o un parámetro rechazado, y sin
+ * el mensaje no hay forma de saberlo. No se muestra en ninguna página.
+ */
+export function detalleError(error: unknown): { mensaje?: string; peticion?: string } {
+  if (!(error instanceof Anthropic.APIError)) return {};
+  return { mensaje: error.message.slice(0, 500), peticion: error.requestID ?? undefined };
+}
+
 export function describirError(error: unknown): string {
   if (error instanceof Anthropic.RateLimitError) return 'límite de tasa de Anthropic (429)';
   if (error instanceof Anthropic.AuthenticationError) return 'clave de Anthropic rechazada (401)';
