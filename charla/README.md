@@ -11,6 +11,8 @@ Un solo Worker de Cloudflare sirve tres cosas:
 | `/vivo` | El público, desde el QR | Solo lectura: la diapositiva actual, lo que hace la IA paso a paso y el kit para llevar. |
 | `/api/...` | Ver `src/index.ts` | Las demos (Claude, PubMed, el chat con PubMed, Evidentia) y la sala. Todo lo que cuesta dinero exige el token. |
 
+Las diapositivas usan la plantilla del IV Simposio (Facultad de Medicina, Universidad Nacional): portada con la marca del evento, fondo lila con encabezado para el contenido y la paleta oscuro/crema. Los fondos están en `web/plantilla/` (reducidos a 1920×1080 desde el .pptx) y van embebidos en la página, así que la copia sin red se ve igual.
+
 ## Reglas que el código hace cumplir
 
 1. **Todo en español y de usted.** Una prueba (`test/contenido.test.ts`) busca tuteo en cada texto visible y falla si lo encuentra.

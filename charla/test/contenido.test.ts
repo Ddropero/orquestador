@@ -119,7 +119,8 @@ describe('sin tuteo en ningún texto visible', () => {
     'base/charla-ia-investigacion.html',
     'datos/contenido.json',
     'datos/respaldos.json',
-    ...readdirSync(join(RAIZ, 'web')).map((f) => `web/${f}`),
+    // Solo archivos: web/plantilla/ guarda las imágenes de la plantilla del simposio.
+    ...readdirSync(join(RAIZ, 'web'), { withFileTypes: true }).filter((f) => f.isFile()).map((f) => `web/${f.name}`),
   ];
 
   /** Textos entre comillas en JS y texto visible en HTML: lo que puede ver una persona. */

@@ -82,6 +82,9 @@ async function fuentesEmbebidas() {
 
 const ESTILOS_CHARLA = `
   /* Añadidos para la versión en vivo. Nada de esto cambia el aspecto de las diapositivas. */
+  /* «.stack» es display:flex y sin esto le ganaba al atributo hidden: la caja de la
+     respuesta se veía vacía antes de pulsar el botón. */
+  [hidden]{ display:none !important; }
   .qr-vivo{ display:flex; gap:clamp(10px,1.4vw,18px); align-items:center; }
   .qr-vivo .qr{ display:block; background:#fff; border-radius:8px; }
   .qr-vivo p{ font-size:clamp(12px,1.5vw,18px); line-height:1.35; }
@@ -117,6 +120,59 @@ const ESTILOS_CHARLA = `
   .controles-cab{ display:flex; justify-content:space-between; align-items:center; color:var(--deep-ink); }
   .controles form{ margin:0; }
 `;
+
+/**
+ * La plantilla del IV Simposio (Facultad de Medicina, Universidad Nacional): el
+ * fondo de la portada con la marca del evento, el fondo lila con encabezado de las
+ * diapositivas de contenido, y su paleta (oscuro #2A2B2A, crema #D9C9A8, lila
+ * #F4E7F5). Las imágenes van embebidas para que la copia sin red se vea igual; son
+ * las de la plantilla .pptx, reducidas a 1920×1080 en JPEG (web/plantilla/).
+ * Las diapositivas oscuras llevan las dos líneas crema de la plantilla dibujadas con
+ * CSS: su fondo con el escudo en el centro quedaría debajo del texto.
+ */
+export function estilosPlantilla(portada, contenido) {
+  const lineas = (color) => {
+    const l = `linear-gradient(${color},${color})`;
+    return (
+      `${l} left 3vw top 4% / 14vw 5px no-repeat, ${l} left 3vw top calc(4% + 2px) / 94vw 1px no-repeat, ` +
+      `${l} right 3vw bottom 4% / 14vw 5px no-repeat, ${l} left 3vw bottom calc(4% + 2px) / 94vw 1px no-repeat`
+    );
+  };
+  return `
+  :root{
+    --paper:#F4E7F5; --card:#FFFBFF; --ink:#2A2B2A; --body:#3E3A40; --soft:#6B646D;
+    --gold:#6E5A2F; --glow:#D9C9A8; --line:#E0CFE2; --surround:#2A2B2A; --alert:#A63D2A;
+    --deep:#2A2B2A; --deep-ink:#F3ECDD; --deep-body:#CFC6B4;
+  }
+  /* La barra de botones queda debajo de la diapositiva y no encima: así no tapa el pie
+     de la plantilla (logos y líneas). */
+  :root{ --barra:calc(56px + env(safe-area-inset-bottom,0px)); --alto:calc(100vh - var(--barra)); }
+  .stage{ padding-bottom:var(--barra); background:var(--deep); }
+  /* Los márgenes van en proporción al ALTO de la diapositiva: el encabezado de la
+     plantilla ocupa su 14 % superior y la línea del pie está al 95 %. */
+  /* Estirado y no recortado: en pantallas 16:10 «cover» cortaría el encabezado del evento.
+     «safe center»: si el contenido no cabe, empieza bajo el encabezado en vez de subirse a él. */
+  .slide{ background:var(--paper) url(data:image/jpeg;base64,${contenido}) center / 100% 100% no-repeat;
+    justify-content:safe center; padding:calc(var(--alto) * .16) clamp(20px,5vw,72px) calc(var(--alto) * .07); }
+  .slide.dark{ background:${lineas('var(--glow)')}, var(--deep); padding-top:calc(var(--alto) * .08); }
+  .statement{ background:${lineas('var(--deep)')}, var(--glow); padding-top:calc(var(--alto) * .08); }
+  .statement h2,.statement p{ color:var(--deep); }
+  .dark .card{ background:#363736; border-left-color:var(--glow); }
+  .tools span{ background:#EADCEC; }
+  .pill{ background:#EADCEC; }
+  /* Portada: la marca del simposio arriba y la foto a la derecha son de la plantilla. */
+  #stage > .slide:first-child{ background:var(--deep) url(data:image/jpeg;base64,${portada}) center / 100% 100% no-repeat;
+    justify-content:flex-start; gap:clamp(6px,1.6vh,16px); padding:calc(var(--alto) * .36) 30% calc(var(--alto) * .14) 5%; }
+  #stage > .slide:first-child > .eyebrow{ display:none; }
+  #stage > .slide:first-child h1{ font-size:clamp(26px,4.3vw,66px); }
+  #stage > .slide:first-child .lead{ font-size:clamp(15px,2.1vw,30px); }
+  #stage > .slide:first-child p{ font-size:clamp(13px,1.6vw,22px); }
+  #stage > .slide:first-child .qr-portada{ position:static; }
+  #stage > .slide:first-child .qr-portada .qr{ width:clamp(80px,14vh,160px); }
+  #stage > .slide:first-child .qr-portada p{ font-size:clamp(12px,1.3vw,17px); }
+  @media (max-width: 900px){ #stage > .slide:first-child{ padding:calc(var(--alto) * .3) 6% calc(var(--alto) * .14); background-size:cover; } }
+`;
+}
 
 const CONTROLES = `
 <div class="controles" id="controles" hidden>
@@ -182,7 +238,9 @@ async function construirPresentador({ contenido, config, respaldos, urlVivo }) {
     // El favicon va embebido: la copia sin red no debe pedir nada fuera del archivo.
     `<meta name="robots" content="noindex, nofollow">\n<link rel="icon" href="data:image/svg+xml;base64,${(await readFile(r('web', 'favicon.svg'))).toString('base64')}" type="image/svg+xml">\n<style>\n${await fuentesEmbebidas()}\n</style>\n`,
   );
-  html = unaVez(html, '</style>\n</head>', `</style>\n<style>${ESTILOS_CHARLA}</style>\n</head>`);
+  const fondo = async (nombre) => (await readFile(r('web', 'plantilla', nombre))).toString('base64');
+  const plantilla = estilosPlantilla(await fondo('portada.jpg'), await fondo('contenido.jpg'));
+  html = unaVez(html, '</style>\n</head>', `</style>\n<style>${ESTILOS_CHARLA}</style>\n<style>${plantilla}</style>\n</head>`);
 
   // 2. El QR hacia /vivo: en la portada y en la última diapositiva.
   const textoUrl = urlVivo.replace(/^https?:\/\//, '');
