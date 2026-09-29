@@ -1,0 +1,8 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["./**/*.ts", "../src/contenido.ts", "../src/eventos.ts", "../src/auth.ts", "../src/pubmed.ts", "../src/evidentia.ts"]
+}

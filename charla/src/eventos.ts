@@ -1,0 +1,366 @@
+/**
+ * Los eventos de la sala: lo ÚNICO que ve el público.
+ *
+ * Formato `{tipo, ts, seq, ...}`. Cada tipo tiene una lista cerrada de campos y
+ * `sanear()` descarta todo lo demás antes de difundir: si mañana alguien pasa por
+ * error un objeto con el prompt o con la clave, no sale de aquí.
+ *
+ * Campos añadidos al contrato original, y por qué:
+ *  - `seq` (todos): número creciente para que /vivo no pinte dos veces el mismo
+ *    evento cuando llega por WebSocket y por sondeo.
+ *  - `ensayo` (claude_texto, pubmed_*): marca que el dato es el respaldo grabado en
+ *    el ensayo y no una respuesta en vivo. /vivo lo etiqueta.
+ *  - `coincide` (pubmed_consulta): una búsqueda puede devolver artículos que NO son
+ *    el citado. La referencia 3 lo hace por título. Contar resultados no basta.
+ *  - `detalle` (evidentia_etapa): cifras de la etapa, construidas por el servidor.
+ *
+ * Tipos añadidos para que el público vea el proceso y no solo el resultado:
+ *  - `pubmed_buscando`: la sala está a punto de consultar PubMed por esa vía para
+ *    esa referencia. Solo número y vía: el texto de la consulta lo tiene /vivo desde
+ *    la construcción y no lo muestra antes del veredicto.
+ *  - `evidentia_embudo`: las cifras del embudo de Evidentia (encontradas, únicas,
+ *    comprobadas, retractadas, afirmaciones con cita, escaladas). Solo enteros: nada
+ *    del texto del resultado llega al público.
+ *  - `votacion` y `votos`: la votación del público sobre si cada referencia existe.
+ *    Solo números de referencia y totales: ninguna cita, ningún votante. Mientras
+ *    la votación está abierta, `votos` lleva solo `total` (cuántos votos van); el
+ *    desglose por referencia (`conteos`) sale al cerrarla. Así ni leyendo los datos
+ *    de la página se sabe qué va ganando antes de votar.
+ *
+ * Tipos de la demostración 2 de 3 («El mismo chat, con PubMed»):
+ *  - `chat_paso`: búsqueda, lectura y respuesta, con su cifra (resultados de la
+ *    consulta fija, artículos leídos).
+ *  - `chat_fuentes`: los artículos reales que leyó el modelo, cada uno con su PMID.
+ *    Salen de PubMed, no del modelo: por eso sí pueden mostrarse completos.
+ *  - `chat_texto`: la respuesta del modelo, con las citas ya revisadas contra esas
+ *    fuentes. Va aparte de `claude_texto` para no pisar la comparación de la demo 1.
+ */
+import type { Via } from './contenido.js';
+
+export type Tema = 'resumen' | 'verificacion' | 'evidentia' | 'chat';
+export type PasoChat = 'busqueda' | 'lectura' | 'respuesta';
+
+export interface FuenteChat {
+  pmid: string;
+  titulo: string;
+  revista: string;
+  anio?: number;
+}
+export type EstadoEtapa = 'en curso' | 'completada' | 'falló' | 'sin terminar';
+export type EstadoVotacion = 'abierta' | 'cerrada';
+
+/** Cifras del embudo de Evidentia. Todas opcionales: se difunde solo lo que el resultado trae. */
+export interface CifrasEmbudo {
+  pubmed?: number;
+  europepmc?: number;
+  unicas?: number;
+  comprobadas?: number;
+  retractadas?: number;
+  afirmaciones?: number;
+  escaladas?: number;
+}
+export const CAMPOS_EMBUDO = ['pubmed', 'europepmc', 'unicas', 'comprobadas', 'retractadas', 'afirmaciones', 'escaladas'] as const;
+
+export interface ConteoVotos {
+  ref: number;
+  si: number;
+  no: number;
+}
+
+interface Base {
+  ts: number;
+  seq: number;
+}
+
+export type Evento =
+  | (Base & { tipo: 'diapositiva'; n: number; titulo: string })
+  | (Base & { tipo: 'demo_inicio'; tema: Tema })
+  | (Base & { tipo: 'claude_texto'; texto_parcial: string; ensayo?: boolean })
+  | (Base & { tipo: 'pubmed_consulta'; ref: number; via: Via; resultados: number; coincide: boolean; ensayo?: boolean })
+  | (Base & { tipo: 'pubmed_veredicto'; ref: number; existe: boolean; pmid?: string; ensayo?: boolean })
+  | (Base & { tipo: 'evidentia_etapa'; etapa: string; estado: EstadoEtapa; detalle?: string })
+  | (Base & { tipo: 'aviso'; texto: string })
+  | (Base & { tipo: 'pubmed_buscando'; ref: number; via: Via; ensayo?: boolean })
+  | (Base & { tipo: 'evidentia_embudo'; ensayo?: boolean } & CifrasEmbudo)
+  | (Base & { tipo: 'votacion'; estado: EstadoVotacion; ronda: number })
+  | (Base & { tipo: 'votos'; ronda: number; conteos: ConteoVotos[] })
+  | (Base & { tipo: 'votos'; ronda: number; total: number })
+  | (Base & { tipo: 'chat_paso'; paso: PasoChat; estado: EstadoEtapa; cifra?: number; ensayo?: boolean })
+  | (Base & { tipo: 'chat_fuentes'; fuentes: FuenteChat[]; ensayo?: boolean })
+  | (Base & { tipo: 'chat_texto'; texto_parcial: string; ensayo?: boolean });
+
+/** Un evento antes de que la sala le ponga `ts` y `seq`. */
+export type EventoNuevo = Evento extends infer E ? (E extends Evento ? Omit<E, 'ts' | 'seq'> : never) : never;
+
+export const TIPOS = [
+  'diapositiva',
+  'demo_inicio',
+  'claude_texto',
+  'pubmed_consulta',
+  'pubmed_veredicto',
+  'evidentia_etapa',
+  'aviso',
+  'pubmed_buscando',
+  'evidentia_embudo',
+  'votacion',
+  'votos',
+  'chat_paso',
+  'chat_fuentes',
+  'chat_texto',
+] as const;
+
+const TEMAS: readonly Tema[] = ['resumen', 'verificacion', 'evidentia', 'chat'];
+const PASOS_CHAT: readonly PasoChat[] = ['busqueda', 'lectura', 'respuesta'];
+/** La consulta fija pide 3; el tope deja margen sin que la lista se desborde en el celular. */
+export const MAX_FUENTES_CHAT = 5;
+const VIAS: readonly Via[] = ['título', 'DOI', 'autor'];
+const ESTADOS: readonly EstadoEtapa[] = ['en curso', 'completada', 'falló', 'sin terminar'];
+const ESTADOS_VOTACION: readonly EstadoVotacion[] = ['abierta', 'cerrada'];
+/** Número de referencias de la demo: la votación trae siempre un conteo por cada una. */
+export const TOTAL_REFERENCIAS = 5;
+/** Tope de cualquier cifra difundida: nada legítimo de esta charla se le acerca. */
+const CIFRA_MAX = 1_000_000;
+
+export const LIMITES = {
+  texto_parcial: 6000,
+  aviso: 280,
+  titulo: 160,
+  etapa: 80,
+  detalle: 200,
+  titulo_fuente: 300,
+  revista: 120,
+} as const;
+
+/**
+ * Deja un texto apto para pintarse con `textContent`: sin caracteres de control
+ * salvo el salto de línea, sin espacios sobrantes y con tope de longitud.
+ */
+export function limpiarTexto(valor: unknown, maximo: number, conSaltos = false): string {
+  if (typeof valor !== 'string') return '';
+  // Fuera también los controles bidireccionales: permitirían que un texto se viera
+  // en pantalla distinto de lo que dice.
+  let s = valor.normalize('NFC').replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, '');
+  s = conSaltos
+    ? s.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000B-\u001F\u007F-\u009F\u2028\u2029]/g, '')
+    : s.replace(/[\u0000-\u001F\u007F-\u009F\u2028\u2029]/g, ' ').replace(/\s+/g, ' ');
+  s = s.trim();
+  return s.length > maximo ? s.slice(0, maximo) : s;
+}
+
+function entero(valor: unknown, min: number, max: number): number | null {
+  return typeof valor === 'number' && Number.isInteger(valor) && valor >= min && valor <= max ? valor : null;
+}
+
+/**
+ * Construye la versión pública de un evento con SOLO sus campos permitidos.
+ * Devuelve `null` si algo no cuadra: un evento dudoso no se difunde.
+ */
+export function sanear(entrada: unknown, ts: number, seq: number): Evento | null {
+  if (!entrada || typeof entrada !== 'object') return null;
+  const e = entrada as Record<string, unknown>;
+  const base = { ts, seq };
+
+  switch (e['tipo']) {
+    case 'diapositiva': {
+      const n = entero(e['n'], 1, 99);
+      const titulo = limpiarTexto(e['titulo'], LIMITES.titulo);
+      return n === null || !titulo ? null : { ...base, tipo: 'diapositiva', n, titulo };
+    }
+    case 'demo_inicio': {
+      const tema = e['tema'];
+      return TEMAS.includes(tema as Tema) ? { ...base, tipo: 'demo_inicio', tema: tema as Tema } : null;
+    }
+    case 'claude_texto': {
+      const texto = limpiarTexto(e['texto_parcial'], LIMITES.texto_parcial, true);
+      if (!texto) return null;
+      return {
+        ...base,
+        tipo: 'claude_texto',
+        texto_parcial: texto,
+        ...(e['ensayo'] === true ? { ensayo: true } : {}),
+      };
+    }
+    case 'pubmed_consulta': {
+      const ref = entero(e['ref'], 1, 5);
+      const resultados = entero(e['resultados'], 0, 100_000_000);
+      const via = e['via'];
+      if (ref === null || resultados === null || !VIAS.includes(via as Via)) return null;
+      return {
+        ...base,
+        tipo: 'pubmed_consulta',
+        ref,
+        via: via as Via,
+        resultados,
+        coincide: e['coincide'] === true,
+        ...(e['ensayo'] === true ? { ensayo: true } : {}),
+      };
+    }
+    case 'pubmed_veredicto': {
+      const ref = entero(e['ref'], 1, 5);
+      if (ref === null || typeof e['existe'] !== 'boolean') return null;
+      const pmid = typeof e['pmid'] === 'string' && /^\d{1,9}$/.test(e['pmid']) ? e['pmid'] : undefined;
+      // Un "existe" sin PMID no se puede comprobar desde el público: no se difunde.
+      if (e['existe'] && !pmid) return null;
+      return {
+        ...base,
+        tipo: 'pubmed_veredicto',
+        ref,
+        existe: e['existe'],
+        ...(e['existe'] && pmid ? { pmid } : {}),
+        ...(e['ensayo'] === true ? { ensayo: true } : {}),
+      };
+    }
+    case 'evidentia_etapa': {
+      const etapa = limpiarTexto(e['etapa'], LIMITES.etapa);
+      const estado = e['estado'];
+      if (!etapa || !ESTADOS.includes(estado as EstadoEtapa)) return null;
+      const detalle = limpiarTexto(e['detalle'], LIMITES.detalle);
+      return {
+        ...base,
+        tipo: 'evidentia_etapa',
+        etapa,
+        estado: estado as EstadoEtapa,
+        ...(detalle ? { detalle } : {}),
+      };
+    }
+    case 'aviso': {
+      const texto = limpiarTexto(e['texto'], LIMITES.aviso);
+      return texto ? { ...base, tipo: 'aviso', texto } : null;
+    }
+    case 'pubmed_buscando': {
+      const ref = entero(e['ref'], 1, TOTAL_REFERENCIAS);
+      const via = e['via'];
+      if (ref === null || !VIAS.includes(via as Via)) return null;
+      return { ...base, tipo: 'pubmed_buscando', ref, via: via as Via, ...(e['ensayo'] === true ? { ensayo: true } : {}) };
+    }
+    case 'evidentia_embudo': {
+      const cifras: CifrasEmbudo = {};
+      for (const campo of CAMPOS_EMBUDO) {
+        if (e[campo] === undefined || e[campo] === null) continue;
+        const v = entero(e[campo], 0, CIFRA_MAX);
+        // Una cifra presente pero inválida invalida el evento: no se difunde a medias.
+        if (v === null) return null;
+        cifras[campo] = v;
+      }
+      if (Object.keys(cifras).length === 0) return null;
+      return { ...base, tipo: 'evidentia_embudo', ...cifras, ...(e['ensayo'] === true ? { ensayo: true } : {}) };
+    }
+    case 'votacion': {
+      const estado = e['estado'];
+      const ronda = entero(e['ronda'], 1, Number.MAX_SAFE_INTEGER);
+      if (ronda === null || !ESTADOS_VOTACION.includes(estado as EstadoVotacion)) return null;
+      return { ...base, tipo: 'votacion', estado: estado as EstadoVotacion, ronda };
+    }
+    case 'votos': {
+      const ronda = entero(e['ronda'], 1, Number.MAX_SAFE_INTEGER);
+      if (ronda === null) return null;
+      const lista = e['conteos'];
+      // Sin desglose (votación abierta): solo cuántos votos van.
+      if (lista === undefined) {
+        const total = entero(e['total'], 0, CIFRA_MAX * TOTAL_REFERENCIAS);
+        return total === null ? null : { ...base, tipo: 'votos', ronda, total };
+      }
+      if (!Array.isArray(lista) || lista.length !== TOTAL_REFERENCIAS) return null;
+      const conteos: ConteoVotos[] = [];
+      for (const c of lista) {
+        if (!c || typeof c !== 'object') return null;
+        const x = c as Record<string, unknown>;
+        const ref = entero(x['ref'], 1, TOTAL_REFERENCIAS);
+        const si = entero(x['si'], 0, CIFRA_MAX);
+        const no = entero(x['no'], 0, CIFRA_MAX);
+        if (ref === null || si === null || no === null || conteos.some((k) => k.ref === ref)) return null;
+        conteos.push({ ref, si, no });
+      }
+      conteos.sort((a, b) => a.ref - b.ref);
+      return { ...base, tipo: 'votos', ronda, conteos };
+    }
+    case 'chat_paso': {
+      const paso = e['paso'];
+      const estado = e['estado'];
+      if (!PASOS_CHAT.includes(paso as PasoChat) || !ESTADOS.includes(estado as EstadoEtapa)) return null;
+      let cifra: number | undefined;
+      if (e['cifra'] !== undefined) {
+        const c = entero(e['cifra'], 0, 100_000_000);
+        if (c === null) return null;
+        cifra = c;
+      }
+      return {
+        ...base,
+        tipo: 'chat_paso',
+        paso: paso as PasoChat,
+        estado: estado as EstadoEtapa,
+        ...(cifra !== undefined ? { cifra } : {}),
+        ...(e['ensayo'] === true ? { ensayo: true } : {}),
+      };
+    }
+    case 'chat_fuentes': {
+      const lista = e['fuentes'];
+      if (!Array.isArray(lista) || lista.length === 0 || lista.length > MAX_FUENTES_CHAT) return null;
+      const fuentes: FuenteChat[] = [];
+      for (const f of lista) {
+        if (!f || typeof f !== 'object') return null;
+        const x = f as Record<string, unknown>;
+        const pmid = typeof x['pmid'] === 'string' && /^\d{1,9}$/.test(x['pmid']) ? x['pmid'] : null;
+        const titulo = limpiarTexto(x['titulo'], LIMITES.titulo_fuente);
+        const revista = limpiarTexto(x['revista'], LIMITES.revista);
+        // Una fuente sin PMID o sin título no se puede comprobar desde el público: fuera todo el evento.
+        if (!pmid || !titulo || fuentes.some((k) => k.pmid === pmid)) return null;
+        const anio = x['anio'] === undefined ? null : entero(x['anio'], 1800, 2100);
+        if (x['anio'] !== undefined && anio === null) return null;
+        fuentes.push({ pmid, titulo, revista, ...(anio !== null ? { anio } : {}) });
+      }
+      return { ...base, tipo: 'chat_fuentes', fuentes, ...(e['ensayo'] === true ? { ensayo: true } : {}) };
+    }
+    case 'chat_texto': {
+      const texto = limpiarTexto(e['texto_parcial'], LIMITES.texto_parcial, true);
+      if (!texto) return null;
+      return { ...base, tipo: 'chat_texto', texto_parcial: texto, ...(e['ensayo'] === true ? { ensayo: true } : {}) };
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * Historial que se entrega a quien llega tarde. Se compacta para que no crezca:
+ * de la diapositiva y del texto de Claude solo importa el último; una demo nueva
+ * reemplaza la anterior del mismo tema.
+ */
+export function compactar(historial: Evento[], nuevo: Evento, maximo = 200): Evento[] {
+  let h = historial;
+
+  if (nuevo.tipo === 'diapositiva') h = h.filter((e) => e.tipo !== 'diapositiva');
+  if (nuevo.tipo === 'claude_texto') h = h.filter((e) => e.tipo !== 'claude_texto');
+  if (nuevo.tipo === 'demo_inicio') {
+    const borrar: Evento['tipo'][] =
+      nuevo.tema === 'resumen'
+        ? ['claude_texto']
+        : nuevo.tema === 'verificacion'
+          ? ['pubmed_consulta', 'pubmed_veredicto', 'pubmed_buscando']
+          : nuevo.tema === 'chat'
+            ? ['chat_paso', 'chat_fuentes', 'chat_texto']
+            : ['evidentia_etapa', 'evidentia_embudo'];
+    h = h.filter((e) => !borrar.includes(e.tipo) && !(e.tipo === 'demo_inicio' && e.tema === nuevo.tema));
+  }
+  // De estos solo importa el último: el paso en curso, el embudo y el estado y los
+  // totales de la votación. Una votación que se abre en una ronda nueva empieza de cero.
+  if (nuevo.tipo === 'pubmed_buscando') h = h.filter((e) => e.tipo !== 'pubmed_buscando');
+  if (nuevo.tipo === 'evidentia_embudo') h = h.filter((e) => e.tipo !== 'evidentia_embudo');
+  if (nuevo.tipo === 'votos') h = h.filter((e) => e.tipo !== 'votos');
+  if (nuevo.tipo === 'chat_texto') h = h.filter((e) => e.tipo !== 'chat_texto');
+  if (nuevo.tipo === 'chat_fuentes') h = h.filter((e) => e.tipo !== 'chat_fuentes');
+  if (nuevo.tipo === 'chat_paso') h = h.filter((e) => !(e.tipo === 'chat_paso' && e.paso === nuevo.paso));
+  if (nuevo.tipo === 'votacion') {
+    h = h.filter((e) => e.tipo !== 'votacion' && !(e.tipo === 'votos' && e.ronda !== nuevo.ronda));
+  }
+  if (nuevo.tipo === 'aviso') {
+    const avisos = h.filter((e) => e.tipo === 'aviso');
+    if (avisos.length >= 5) {
+      const masViejo = avisos[0];
+      h = h.filter((e) => e !== masViejo);
+    }
+  }
+
+  h = [...h, nuevo];
+  return h.length > maximo ? h.slice(h.length - maximo) : h;
+}

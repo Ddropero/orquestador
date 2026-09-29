@@ -35,6 +35,13 @@ Exactitud en extracción de datos:
 El sistema automatiza donde la IA es mejor y se aparta donde es peor. Las cifras están en
 `evidentia-instruments`, junto a cada instrumento, con su cita.
 
+## La charla «Del caso clínico al PubMed»
+
+En [`charla/`](charla/README.md) vive la versión web en vivo de la charla del 2 de octubre de
+2026: la presentación para el ponente, la página `/vivo` del QR para el público y las demos con
+Claude, PubMed y Evidentia, cada una con su respaldo sin red. Es un Worker aparte, con su propio
+`package.json`, sus pruebas y su flujo de despliegue (`.github/workflows/charla.yml`).
+
 ## Los tres repositorios
 
 | Repo | Qué contiene | Ritmo de cambio |
