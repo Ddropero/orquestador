@@ -55,6 +55,7 @@ const PUBLICOS: Record<string, string> = {
 const PRESENTADOR: Record<string, string> = {
   'POST /api/claude/resumen': '/claude/resumen',
   'POST /api/pubmed/verificar': '/pubmed/verificar',
+  'POST /api/chat/responder': '/chat/responder',
   'POST /api/evidentia/lanzar': '/evidentia/lanzar',
   'POST /api/sala/diapositiva': '/diapositiva',
   'POST /api/sala/aviso': '/aviso',
@@ -324,6 +325,7 @@ async function estadoPresentador(env: Env, quien: Identidad): Promise<Response> 
     respaldos: {
       claude: respaldos.claude?.fecha ?? null,
       pubmed: respaldos.pubmed?.fecha ?? null,
+      chat: respaldos.chat?.fecha ?? null,
       evidentia: respaldos.evidentia?.runId ?? null,
       // Sin estas cifras, si Evidentia falla en vivo, /vivo no tiene embudo del ensayo que mostrar.
       embudoEvidentia: Boolean(respaldos.evidentia?.cifras && Object.keys(respaldos.evidentia.cifras).length > 0),

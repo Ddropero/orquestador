@@ -113,6 +113,7 @@ if (token) {
     d.respaldos.pubmed && d.respaldos.pubmed >= '2026-09-29'
       ? ok(`respaldo de PubMed del ${d.respaldos.pubmed}`)
       : mal(d.respaldos.pubmed ? `el respaldo de PubMed (${d.respaldos.pubmed}) no es del ensayo general` : 'sin respaldo de PubMed grabado');
+    d.respaldos.chat ? ok(`respaldo del chat con PubMed del ${d.respaldos.chat}`) : mal('sin respaldo del chat con PubMed grabado');
     d.respaldos.evidentia ? ok('respaldo de Evidentia grabado') : mal('sin respaldo de Evidentia grabado');
     d.respaldos.embudoEvidentia === true
       ? ok('el respaldo de Evidentia trae las cifras del embudo')

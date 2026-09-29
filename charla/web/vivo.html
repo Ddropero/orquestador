@@ -60,6 +60,21 @@
     <ol class="refs" id="refs"></ol>
   </section>
 
+  <section class="tarjeta" id="chat" aria-labelledby="chat-titulo" hidden>
+    <h2 id="chat-titulo">El mismo chat, con PubMed</h2>
+    <p class="chat-pregunta" id="chat-pregunta"></p>
+    <p class="nota">El sistema busca en PubMed con una consulta fija y el modelo solo puede responder con los resúmenes que encontró, citando el PMID de cada uno. Toque un PMID para abrir el artículo.</p>
+    <ol class="etapas" id="chat-pasos"></ol>
+    <p class="nota chat-consulta">Consulta en PubMed: <code id="chat-consulta"></code></p>
+    <div class="caja-ia" id="chat-respuesta" hidden>
+      <p class="sello">Texto generado por IA con estos resúmenes de PubMed · Abra cada artículo antes de citarlo · No es una recomendación clínica</p>
+      <p class="sello sello-ensayo" id="chat-ensayo" hidden></p>
+      <p class="texto-ia" id="chat-texto"></p>
+    </div>
+    <h3 id="chat-fuentes-titulo" hidden>Lo que leyó el modelo</h3>
+    <ol class="refs fuentes" id="chat-fuentes"></ol>
+  </section>
+
   <section class="tarjeta" id="evidentia" hidden>
     <h2>Evidentia: ¿miel o sulfadiazina de plata?</h2>
     <p class="nota">Etapas del sistema. Lo mismo, paso a paso, lo puede hacer usted con PubMed, Elicit, Consensus o Scite. El resultado no ha sido revisado por un humano y no es una recomendación clínica.</p>

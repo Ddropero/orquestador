@@ -5,7 +5,7 @@
  */
 import type { Respaldos } from './contenido.js';
 
-const VACIO: Respaldos = { claude: null, pubmed: null, evidentia: null };
+const VACIO: Respaldos = { claude: null, pubmed: null, evidentia: null, chat: null };
 let cache: Respaldos | null = null;
 
 export async function cargarRespaldos(env: { ASSETS: Fetcher }): Promise<Respaldos> {
@@ -14,7 +14,7 @@ export async function cargarRespaldos(env: { ASSETS: Fetcher }): Promise<Respald
     const res = await env.ASSETS.fetch('https://assets.invalid/_privado/respaldos.json');
     if (!res.ok) return VACIO;
     const r = (await res.json()) as Partial<Respaldos>;
-    cache = { claude: r.claude ?? null, pubmed: r.pubmed ?? null, evidentia: r.evidentia ?? null };
+    cache = { claude: r.claude ?? null, pubmed: r.pubmed ?? null, evidentia: r.evidentia ?? null, chat: r.chat ?? null };
     return cache;
   } catch {
     return VACIO;

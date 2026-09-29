@@ -3,6 +3,8 @@
  * Graba los respaldos durante el ensayo general, contra el Worker desplegado:
  *   - la respuesta de Claude al prompt fijo,
  *   - los resultados de PubMed para las cinco referencias,
+ *   - la demo del chat con PubMed: cuántos resultados dio la consulta fija, los
+ *     artículos que leyó Claude y su respuesta,
  *   - el runId del último resultado completo de Evidentia y las cifras de su embudo
  *     (lo que /vivo muestra con la etiqueta del ensayo si Evidentia falla en vivo).
  *
@@ -99,6 +101,29 @@ try {
   console.log(`PubMed: grabado (${referencias.map((r) => `${r.ref}:${r.existe ? 'sí' : 'no'}`).join(' ')}).`);
 } catch (e) {
   problemas.push(`PubMed no se grabó: ${e.message}. Se conserva el respaldo anterior.`);
+}
+
+// ---- Chat con PubMed
+try {
+  const m = await ndjson('/api/chat/responder');
+  const fin = m.find((x) => x.t === 'fin');
+  if (!fin) throw new Error(`no terminó en vivo (${m.map((x) => x.t).join(', ')})`);
+  if (!Array.isArray(fin.fuentes) || fin.fuentes.length === 0) throw new Error('no trajo fuentes');
+  if (!Array.isArray(fin.citados) || fin.citados.length === 0) throw new Error('la respuesta no cita ninguna fuente');
+  const estado = await (await fetch(`${base}/api/presentador/estado`, { headers: cabeceras })).json();
+  nuevo.chat = {
+    fecha: hoy,
+    modelo: estado.configuracion?.modelo ?? 'claude',
+    resultados: fin.resultados,
+    fuentes: fin.fuentes,
+    texto: fin.texto,
+  };
+  console.log(`Chat: grabado (${fin.resultados} resultados; cita ${fin.citados.join(', ')}).`);
+  if (fin.texto.includes('cita retirada')) {
+    problemas.push('El chat se grabó con una cita retirada (un PMID que no salió de la búsqueda). Revise el texto en datos/respaldos.json o vuelva a grabar.');
+  }
+} catch (e) {
+  problemas.push(`El chat no se grabó: ${e.message}. Se conserva el respaldo anterior.`);
 }
 
 // ---- Evidentia

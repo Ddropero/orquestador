@@ -137,6 +137,10 @@ const CONTROLES = `
     <p id="c-votacion-estado"></p>
   </section>
   <section>
+    <h4>Chat con PubMed (diapositiva 4)</h4>
+    <p>Cada pregunta al chat es una consulta a Claude y cuenta en el cupo diario. Si PubMed o Claude fallan, o pasan 30 segundos, se muestra la respuesta grabada en el ensayo con su fecha.</p>
+  </section>
+  <section>
     <h4>Público (/vivo)</h4>
     <form id="c-aviso" class="fila"><input id="c-aviso-texto" maxlength="280" placeholder="Mensaje para el público" autocomplete="off"><button type="submit">Enviar</button></form>
     <div class="fila" style="margin-top:8px"><button class="ghost" id="c-reiniciar" type="button">Reiniciar la sala</button></div>
@@ -155,14 +159,14 @@ const CONTROLES = `
 const NOTAS_ANCLA = {
   1: 'Antes de subir, lance la pregunta en Evidentia.">',
   3: 'Si algo falla, quedan las capturas del ensayo.">',
-  10: 'Muestre el fragmento que respalda cada referencia y la marca de no revisado por un humano.">',
+  11: 'Muestre el fragmento que respalda cada referencia y la marca de no revisado por un humano.">',
 };
 
 export function notasExtra(textoUrl) {
   return {
     1: `Invite a escanear el QR o a escribir ${textoUrl}; pulse C y confirme que el panel muestra público conectado.`,
     3: 'Con el sistema, la votación en el celular reemplaza las manos por cada una: (1) abra la votación en el panel (tecla C) y pida que voten; (2) pulse el primer botón y, mientras el modelo responde, lea la lista en forma corta; (3) el segundo botón cierra la votación y verifica. Solo si el público no tiene red o no hay tiempo: una sola mano alzada (¿cuántas de las cinco existen?). Si a los 8 s no llega nada aparece el botón del ensayo; a los 25 s el respaldo entra solo.',
-    10: 'Sin red, ninguno de los enlaces de Evidentia abre: use el PDF del ensayo guardado en el escritorio.',
+    11: 'Sin red, ninguno de los enlaces de Evidentia abre: use el PDF del ensayo guardado en el escritorio.',
   };
 }
 
@@ -295,6 +299,9 @@ async function construirVivo({ contenido, respaldos }) {
     refResumen: contenido.resumen.referencia,
     fechaEnsayoPubmed: respaldos.pubmed?.fecha ?? null,
     fechaEnsayoEvidentia: respaldos.evidentia?.fecha ?? null,
+    fechaEnsayoChat: respaldos.chat?.fecha ?? null,
+    // La demo del chat: la pregunta y la consulta fija son públicas; el prompt no viaja.
+    chat: { pregunta: contenido.chat.pregunta, consulta: contenido.chat.consulta },
     resultadosAbiertos: RESULTADOS_ABIERTOS,
     // Las fabricadas viajan en forma corta y marcadas: la cita completa y su DOI
     // inventado no llegan nunca al público. Tampoco en la consulta por DOI: de una
@@ -306,7 +313,7 @@ async function construirVivo({ contenido, respaldos }) {
         ? { n: ref.n, corta: ref.corta, fabricada: true, consultas }
         : { n: ref.n, cita: ref.cita, corta: ref.corta, fabricada: false, consultas };
     }),
-    // El mapa de los siete pasos: textos de las diapositivas 9 a 15 y el prompt de cada uno.
+    // El mapa de los siete pasos: textos de las diapositivas 10 a 16 y el prompt de cada uno.
     pasos: pasos.map((p, i) => ({
       paso: p.paso,
       diapositiva: p.diapositiva,
@@ -355,6 +362,7 @@ export async function construir() {
   if (!respaldos.claude) avisos.push('No hay respuesta de Claude grabada (datos/respaldos.json → claude).');
   if (!respaldos.pubmed) avisos.push('No hay resultados de PubMed grabados (datos/respaldos.json → pubmed).');
   if (!respaldos.evidentia) avisos.push('No hay resultado de Evidentia grabado (datos/respaldos.json → evidentia).');
+  if (!respaldos.chat) avisos.push('No hay respuesta del chat con PubMed grabada (datos/respaldos.json → chat).');
   // Un despliegue sin respaldos no llega a producción por descuido: `npm run deploy`
   // pone CHARLA_DESPLIEGUE=1. Antes del ensayo general, CHARLA_SIN_RESPALDOS=1 lo permite a sabiendas.
   if (avisos.length && process.env.CHARLA_DESPLIEGUE === '1' && process.env.CHARLA_SIN_RESPALDOS !== '1') {

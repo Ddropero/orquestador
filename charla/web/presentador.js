@@ -284,6 +284,8 @@
     var terminado = false;
     var controlador = new AbortController();
     var vigia = null;
+    // El porqué del paso al ensayo: el mensaje final no debe taparlo.
+    var motivoEnsayo = "";
     var inicio = Date.now();
     var aviso = setInterval(function(){ if (Date.now() - inicio >= AVISO_ESPERA_MS) btnRespaldoPubmed.hidden = false; }, 1000);
 
@@ -354,17 +356,130 @@
             pintarVeredicto(e.ref, e.existe, e.pmid, consultas[e.ref], e.ensayo);
           }
         } else if (m.t === "aviso") {
+          motivoEnsayo = m.mensaje;
           status.textContent = m.mensaje + " Se usan los resultados del ensayo.";
         } else if (m.t === "sin_respaldo") {
           var s = celda(m.ref);
           if (s) { s.className = "verdict wait"; s.textContent = "PubMed no respondió y no hay respaldo del ensayo."; }
         } else if (m.t === "fin") {
           cerrar();
-          status.textContent = m.ensayo ? "Terminado con resultados del ensayo del " + fechaLarga(m.fecha) + "." : "Verificación en vivo terminada.";
+          status.textContent = m.ensayo
+            ? "Terminado con resultados del ensayo del " + fechaLarga(m.fecha) + "." + (motivoEnsayo ? " Motivo: " + motivoEnsayo : "")
+            : "Verificación en vivo terminada.";
         }
       }).then(function(){ if (!terminado) usarRespaldo("La verificación se cortó: se muestran los resultados del ensayo."); });
     }).catch(function(){
       if (!terminado) { marcarRed("error"); usarRespaldo("Sin conexión con el servidor: se muestran los resultados del ensayo."); }
+    });
+  };
+
+  /* ---------- demo 2: el mismo chat, con PubMed ---------- */
+  // El servidor corta a los 30 s y manda el ensayo; aquí se espera un poco más.
+  var PLAZO_CHAT_MS = 32000;
+  var btnChat = document.getElementById("btn-chat");
+  var btnRespaldoChat = document.getElementById("btn-respaldo-chat");
+  var chatWrap = document.getElementById("chat-wrap");
+  var chatOut = document.getElementById("chat-out");
+  var chatLabel = document.getElementById("chat-label");
+  var chatFuentes = document.getElementById("chat-fuentes");
+  var chatStatus = document.getElementById("chat-status");
+  var ETIQUETA_CHAT = "Respuesta del modelo · solo con lo que encontró PubMed";
+  btnChat.disabled = false;
+
+  function pintarFuentesChat(fuentes){
+    chatFuentes.textContent = "";
+    (fuentes || []).forEach(function(f){
+      var li = document.createElement("li");
+      li.appendChild(document.createTextNode(f.titulo + " " + f.revista + (f.anio ? ". " + f.anio : "") + ". "));
+      var a = document.createElement("a");
+      a.href = "https://pubmed.ncbi.nlm.nih.gov/" + f.pmid + "/";
+      a.target = "_blank"; a.rel = "noopener";
+      a.textContent = "PMID " + f.pmid;
+      li.appendChild(a);
+      chatFuentes.appendChild(li);
+    });
+  }
+
+  function mostrarRespaldoChat(motivo, r){
+    r = r || RESPALDOS.chat;
+    chatWrap.hidden = false;
+    if (!r) {
+      chatLabel.textContent = "Sin respuesta";
+      chatOut.textContent = motivo + " No hay respuesta de ensayo grabada.";
+      pintarFuentesChat([]);
+      return;
+    }
+    chatLabel.textContent = "Respuesta de ensayo · grabada el " + fechaLarga(r.fecha) + " · solo con lo que encontró PubMed";
+    chatOut.textContent = r.texto;
+    pintarFuentesChat(r.fuentes);
+    chatStatus.textContent = motivo + " PubMed: " + r.resultados + (r.resultados === 1 ? " resultado" : " resultados") + " en el ensayo.";
+  }
+
+  var TEXTO_PASO_CHAT = {
+    "busqueda": { "en curso": function(){ return "Buscando en PubMed…"; }, "completada": function(e){ return "PubMed: " + e.cifra + (e.cifra === 1 ? " resultado" : " resultados") + ". Leyendo los resúmenes…"; } },
+    "lectura": { "completada": function(e){ return "Claude responde solo con " + (e.cifra === 1 ? "este resumen" : "estos " + e.cifra + " resúmenes") + "…"; } },
+    "respuesta": { "completada": function(e){ return "Respuesta en vivo de " + DATOS.modelo + ": cita " + e.cifra + (e.cifra === 1 ? " artículo" : " artículos") + " de la búsqueda. Ábralos antes de citarlos."; } }
+  };
+
+  btnChat.onclick = function(){
+    btnChat.disabled = true;
+    chatWrap.hidden = false;
+    chatLabel.textContent = ETIQUETA_CHAT;
+    chatOut.textContent = "";
+    pintarFuentesChat([]);
+    chatStatus.textContent = "Buscando en PubMed…";
+    var terminado = false;
+    var controlador = new AbortController();
+    var inicio = Date.now();
+    var reloj = setInterval(function(){
+      if (Date.now() - inicio >= AVISO_ESPERA_MS) btnRespaldoChat.hidden = false;
+    }, 1000);
+    var plazo = setTimeout(function(){ usarRespaldo("La demostración tardó más de 30 segundos: se muestra la respuesta del ensayo."); }, PLAZO_CHAT_MS);
+
+    function cerrar(){
+      terminado = true;
+      clearInterval(reloj);
+      clearTimeout(plazo);
+      btnRespaldoChat.hidden = true;
+      btnChat.disabled = false;
+    }
+    function usarRespaldo(motivo){
+      if (terminado) return;
+      cerrar();
+      controlador.abort();
+      mostrarRespaldoChat(motivo);
+      if (!SIN_SERVIDOR) api("/api/sala/respaldo", { method: "POST", cuerpo: { tipo: "chat" } }).catch(nada);
+    }
+    btnRespaldoChat.onclick = function(){ usarRespaldo("Se muestra la respuesta del ensayo."); };
+
+    if (SIN_SERVIDOR) { usarRespaldo("Sin conexión: se muestra la respuesta del ensayo."); return; }
+
+    api("/api/chat/responder", { method: "POST", cuerpo: {}, signal: controlador.signal }).then(function(res){
+      if (!res.ok) {
+        marcarRed(res.status === 401 ? "sesion" : "ok");
+        return res.json().catch(function(){ return {}; }).then(function(b){
+          usarRespaldo((res.status === 409 ? (b.mensaje || "Ya hay una pregunta en curso.") : (b.error || "El servidor no respondió.")) + " Se muestra la respuesta del ensayo.");
+        });
+      }
+      marcarRed("ok");
+      return leerNdjson(res, function(m){
+        if (terminado) return;
+        if (m.t === "evento" && m.evento) {
+          var e = m.evento;
+          if (e.tipo === "chat_paso") {
+            var f = TEXTO_PASO_CHAT[e.paso] && TEXTO_PASO_CHAT[e.paso][e.estado];
+            if (f) chatStatus.textContent = f(e);
+          } else if (e.tipo === "chat_fuentes") {
+            pintarFuentesChat(e.fuentes);
+          }
+        }
+        else if (m.t === "texto") { chatOut.textContent = m.texto; }
+        else if (m.t === "fin") { chatOut.textContent = m.texto; pintarFuentesChat(m.fuentes); cerrar(); }
+        else if (m.t === "respaldo") { cerrar(); mostrarRespaldoChat(m.motivo, { fecha: m.fecha, texto: m.texto, fuentes: m.fuentes, resultados: m.resultados }); }
+        else if (m.t === "error") { cerrar(); chatLabel.textContent = "Sin respuesta"; chatOut.textContent = m.mensaje; }
+      }).then(function(){ if (!terminado) usarRespaldo("La respuesta se cortó: se muestra la del ensayo."); });
+    }).catch(function(){
+      if (!terminado) { marcarRed("error"); usarRespaldo("Sin conexión con el servidor: se muestra la respuesta del ensayo."); }
     });
   };
 
@@ -430,6 +545,7 @@
       filaEstado("Público conectado: " + d.conexiones);
       filaEstado("Respaldo de Claude: " + (d.respaldos.claude ? fechaLarga(d.respaldos.claude) : "NO GRABADO"), d.respaldos.claude ? "" : "alerta");
       filaEstado("Respaldo de PubMed: " + (d.respaldos.pubmed ? fechaLarga(d.respaldos.pubmed) : "NO GRABADO"), d.respaldos.pubmed ? "" : "alerta");
+      filaEstado("Respaldo del chat con PubMed: " + (d.respaldos.chat ? fechaLarga(d.respaldos.chat) : "NO GRABADO"), d.respaldos.chat ? "" : "alerta");
       filaEstado("Respaldo de Evidentia: " + (d.respaldos.evidentia ? "grabado" : "NO GRABADO"), d.respaldos.evidentia ? "" : "alerta");
       filaEstado("Evidentia (/health): " + d.evidentiaSalud, d.evidentiaSalud === "ok" ? "" : "alerta");
       mostrarEvidentia(d.evidentia);

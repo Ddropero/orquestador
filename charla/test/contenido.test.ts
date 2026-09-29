@@ -77,10 +77,10 @@ describe('el prompt fijo', () => {
 });
 
 describe('las diapositivas', () => {
-  it('son 18 y cada título coincide con el encabezado de su diapositiva', () => {
+  it('son 19 y cada título coincide con el encabezado de su diapositiva', () => {
     const secciones = seccionesDe(BASE);
-    expect(secciones).toHaveLength(18);
-    expect(DIAPOSITIVAS).toHaveLength(18);
+    expect(secciones).toHaveLength(19);
+    expect(DIAPOSITIVAS).toHaveLength(19);
     secciones.forEach((s, i) => {
       const h = /<h[12][^>]*>([\s\S]*?)<\/h[12]>/.exec(s);
       if (i === 2) {
@@ -128,7 +128,7 @@ describe('sin tuteo en ningún texto visible', () => {
       const out: string[] = [];
       const recorrer = (v: unknown, clave = ''): void => {
         // Las citas bibliográficas están en inglés: «Berglund TE» no es tuteo.
-        if (typeof v === 'string' && !clave.startsWith('_') && !/^(q|doi|url|cita|titulo|corta)/i.test(clave)) out.push(v);
+        if (typeof v === 'string' && !clave.startsWith('_') && !/^(q|doi|url|cita|titulo|corta|consulta|revista)/i.test(clave)) out.push(v);
         else if (Array.isArray(v)) v.forEach((x) => recorrer(x, clave));
         else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) recorrer(x, k);
       };
@@ -175,11 +175,11 @@ describe('el contenido del kit', () => {
     contenido.kit.prompts.forEach((p, i) => expect(p.startsWith(`Paso 0${i + 1} ·`)).toBe(true));
   });
 
-  it('las líneas rojas son las de la diapositiva 16, textuales', () => {
-    const s16 = seccionesDe(BASE)[15]!;
+  it('las líneas rojas son las de la diapositiva 17, textuales', () => {
+    const s17 = seccionesDe(BASE)[16]!;
     for (const l of contenido.kit.lineasRojas) {
-      expect(textoPlano(s16)).toContain(l.titulo);
-      expect(textoPlano(s16)).toContain(l.texto);
+      expect(textoPlano(s17)).toContain(l.titulo);
+      expect(textoPlano(s17)).toContain(l.texto);
     }
   });
 });

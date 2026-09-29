@@ -123,7 +123,7 @@
 
     <!-- 2 -->
     <section class="slide" data-notes="<b>0:30–1:00.</b> Anuncie el ejercicio y diga en voz alta que la lista se generó a propósito para imitar a un chatbot sin acceso a bases de datos. La lección no cambia: el patrón es el mismo.">
-      <p class="eyebrow">Demostración en vivo · 1 de 2</p>
+      <p class="eyebrow">Demostración en vivo · 1 de 3</p>
       <h2 class="ink">¿Cuáles de estas cinco existen?</h2>
       <div class="grid">
         <div class="card"><h3 class="ink">1. Una IA propone</h3><p>Cinco referencias sobre manejo de la gripa en adultos.</p></div>
@@ -147,14 +147,31 @@
       <p id="demo-status" class="wait" style="font-size:clamp(11px,1.4vw,15px)">Conectando…</p>
     </section>
 
-    <!-- 4 -->
-    <section class="slide" data-notes="<b>3:00–3:15.</b> Una pausa antes de leerla. Es la regla que sostiene toda la charla.">
-      <h1 class="alert">Si no la abrió, no la cite.</h1>
+    <!-- 4 DEMO: el mismo chat, con PubMed -->
+    <section class="slide" id="chat" data-notes="<b>3:00–4:00.</b> La misma gripa y el mismo tipo de chat, pero ahora con PubMed. Lea la pregunta y pulse el botón: el sistema busca en PubMed con la consulta que se ve en pantalla y Claude solo puede responder con esos resúmenes, citando el PMID de cada uno. Invite al público a tocar un PMID en el celular y abrir el artículo. Si a los 8 s no llega nada aparece el botón del ensayo; a los 30 s entra solo.">
+      <p class="eyebrow">Demostración en vivo · 2 de 3</p>
+      <h2 class="ink">El mismo chat, con PubMed</h2>
+      <p class="lead" style="font-family:'Source Serif 4',Georgia,serif; font-style:italic">«¿El oseltamivir acorta los síntomas de la gripa en adultos sanos?»</p>
+      <div class="actions">
+        <button id="btn-chat" disabled>Preguntarle a Claude con PubMed</button>
+        <button id="btn-respaldo-chat" class="ghost" type="button" hidden>Mostrar la respuesta del ensayo</button>
+      </div>
+      <div class="stack" id="chat-wrap" hidden>
+        <p class="out-label" id="chat-label">Respuesta del modelo · solo con lo que encontró PubMed</p>
+        <div class="out" id="chat-out"></div>
+        <ol class="refs" id="chat-fuentes"></ol>
+      </div>
+      <p id="chat-status" class="wait" style="font-size:clamp(11px,1.4vw,15px)">Búsqueda en PubMed: revisiones sistemáticas y metaanálisis con oseltamivir, influenza y adultos en el título.</p>
     </section>
 
     <!-- 5 -->
-    <section class="slide" data-notes="<b>3:15–4:00.</b> Pase a una pregunta de la especialidad: la misma que lanzó en Evidentia mientras lo presentaban. Explique el PICO en treinta segundos y anuncie que el resultado se verá en el paso 02.">
-      <p class="eyebrow">Demostración en vivo · 2 de 2</p>
+    <section class="slide" data-notes="<b>4:00–4:15.</b> Una pausa antes de leerla. Es la regla que sostiene toda la charla.">
+      <h1 class="alert">Si no la abrió, no la cite.</h1>
+    </section>
+
+    <!-- 6 -->
+    <section class="slide" data-notes="<b>4:15–5:00.</b> Pase a una pregunta de la especialidad: la misma que lanzó en Evidentia mientras lo presentaban. Explique el PICO en treinta segundos y anuncie que el resultado se verá en el paso 02.">
+      <p class="eyebrow">Demostración en vivo · 3 de 3</p>
       <h2 class="ink">La misma duda, bien hecha</h2>
       <p class="lead" style="font-family:'Source Serif 4',Georgia,serif; font-style:italic">«¿Miel o sulfadiazina de plata para las quemaduras superficiales?»</p>
       <div class="grid">
@@ -166,15 +183,15 @@
       <p>En segundo plano, Evidentia ya busca y verifica esta misma pregunta.</p>
     </section>
 
-    <!-- 6 -->
-    <section class="slide statement" data-notes="<b>4:00–4:45.</b> El comité de selección pregunta por el diseño, las limitaciones y por qué esa prueba estadística. La IA sirve para aprender a responder eso, no para esquivarlo.">
+    <!-- 7 -->
+    <section class="slide statement" data-notes="<b>5:00–5:45.</b> El comité de selección pregunta por el diseño, las limitaciones y por qué esa prueba estadística. La IA sirve para aprender a responder eso, no para esquivarlo.">
       <p class="eyebrow" style="color:#0F1B2D">Antes de empezar</p>
       <h2>En la entrevista de residencia le van a preguntar por su artículo.</h2>
       <p class="lead" style="color:#2A3547">Si no lo puede defender, se nota. La IA sirve para hacerlo mejor, no para fingirlo.</p>
     </section>
 
-    <!-- 7 -->
-    <section class="slide" data-notes="<b>4:45–6:00.</b> Lo realista para un médico general. Recalque que una revisión no necesita pacientes, solo método, y que el póster es la puerta de entrada: este simposio tiene concurso.">
+    <!-- 8 -->
+    <section class="slide" data-notes="<b>5:45–7:00.</b> Lo realista para un médico general. Recalque que una revisión no necesita pacientes, solo método, y que el póster es la puerta de entrada: este simposio tiene concurso.">
       <p class="eyebrow">Cuatro puertas de entrada</p>
       <h2 class="ink">Lo que sí puede publicar hoy</h2>
       <div class="grid">
@@ -185,8 +202,8 @@
       </div>
     </section>
 
-    <!-- 8 -->
-    <section class="slide dark" data-notes="<b>6:00–6:30.</b> Presente el mapa completo. Todo el flujo tiene una sola regla, que se repite en cada diapositiva: la IA propone, usted verifica.">
+    <!-- 9 -->
+    <section class="slide dark" data-notes="<b>7:00–7:30.</b> Presente el mapa completo. Todo el flujo tiene una sola regla, que se repite en cada diapositiva: la IA propone, usted verifica.">
       <p class="eyebrow">El flujo completo</p>
       <h2 class="ink">Siete pasos, un mismo caso</h2>
       <div class="chain">
@@ -195,8 +212,8 @@
       <p>Caso guía: miel frente a sulfadiazina de plata en quemaduras superficiales. En cada paso, <span style="color:var(--glow); font-weight:600">la IA propone y usted verifica.</span></p>
     </section>
 
-    <!-- 9 -->
-    <section class="slide" data-notes="<b>6:30–7:30.</b> Una buena pregunta vale más que cualquier herramienta. Muestre el prompt que usó y cómo se descarta una pregunta que ya tiene respuesta sólida.">
+    <!-- 10 -->
+    <section class="slide" data-notes="<b>7:30–8:30.</b> Una buena pregunta vale más que cualquier herramienta. Muestre el prompt que usó y cómo se descarta una pregunta que ya tiene respuesta sólida.">
       <p class="eyebrow">Paso 01 de 07 · Pregunta</p>
       <h2 class="ink">De la duda a una pregunta PICO</h2>
       <div class="two">
@@ -207,8 +224,8 @@
       <div class="tools"><em>Herramientas:</em><span>Claude</span><span>ChatGPT</span><span>MeSH de PubMed</span></div>
     </section>
 
-    <!-- 10 -->
-    <section class="slide" data-notes="<b>7:30–8:45.</b> Aquí se cierra el círculo con la demostración del inicio. Cambie a Evidentia: ya debería haber terminado. Muestre el fragmento que respalda cada referencia y la marca de no revisado por un humano.">
+    <!-- 11 -->
+    <section class="slide" data-notes="<b>8:30–9:45.</b> Aquí se cierra el círculo con la demostración del inicio. Cambie a Evidentia: ya debería haber terminado. Muestre el fragmento que respalda cada referencia y la marca de no revisado por un humano.">
       <p class="eyebrow">Paso 02 de 07 · Búsqueda</p>
       <h2 class="ink">Buscar sin inventar referencias</h2>
       <div class="two">
@@ -219,8 +236,8 @@
       <div class="tools"><em>Herramientas:</em><span>PubMed</span><span>Elicit</span><span>Consensus</span><span>Scite</span><span>Evidentia</span></div>
     </section>
 
-    <!-- 11 -->
-    <section class="slide" data-notes="<b>8:45–9:45.</b> Una herramienta anclada a sus propios PDF responde desde esos documentos, no desde lo que cree saber. Aun así, los métodos se leen completos.">
+    <!-- 12 -->
+    <section class="slide" data-notes="<b>9:45–10:45.</b> Una herramienta anclada a sus propios PDF responde desde esos documentos, no desde lo que cree saber. Aun así, los métodos se leen completos.">
       <p class="eyebrow">Paso 03 de 07 · Lectura</p>
       <h2 class="ink">Leer con la fuente al lado</h2>
       <div class="two">
@@ -231,8 +248,8 @@
       <div class="tools"><em>Herramientas:</em><span>NotebookLM</span><span>Claude</span></div>
     </section>
 
-    <!-- 12 -->
-    <section class="slide" data-notes="<b>9:45–11:45.</b> Su ejemplo real: cómo audita el manuscrito de un residente recalculando la estadística desde la base cruda, y cómo aparecen cifras que no cuadran.">
+    <!-- 13 -->
+    <section class="slide" data-notes="<b>10:45–12:45.</b> Su ejemplo real: cómo audita el manuscrito de un residente recalculando la estadística desde la base cruda, y cómo aparecen cifras que no cuadran.">
       <p class="eyebrow">Paso 04 de 07 · Datos</p>
       <h2 class="ink">Analizar datos sin ser estadístico</h2>
       <div class="two">
@@ -243,8 +260,8 @@
       <div class="tools"><em>Herramientas:</em><span>Claude</span><span>ChatGPT</span><span>R</span><span>Python</span></div>
     </section>
 
-    <!-- 13 -->
-    <section class="slide" data-notes="<b>11:45–12:45.</b> El orden importa: primero escribe el autor, después la IA revisa. Si el borrador lo escribe la IA, en la entrevista no lo va a poder defender.">
+    <!-- 14 -->
+    <section class="slide" data-notes="<b>12:45–13:30.</b> El orden importa: primero escribe el autor, después la IA revisa. Si el borrador lo escribe la IA, en la entrevista no lo va a poder defender.">
       <p class="eyebrow">Paso 05 de 07 · Escritura</p>
       <h2 class="ink">Escribir primero, pulir después</h2>
       <div class="two">
@@ -255,8 +272,8 @@
       <div class="tools"><em>Herramientas:</em><span>Red EQUATOR</span><span>CARE</span><span>STROBE</span><span>PRISMA</span></div>
     </section>
 
-    <!-- 14 -->
-    <section class="slide" data-notes="<b>12:45–14:00.</b> Una publicación en una revista depredadora puede restar en lugar de sumar. Pida que siempre confirmen la indexación en la página oficial del índice, no en la de la revista.">
+    <!-- 15 -->
+    <section class="slide" data-notes="<b>13:30–14:15.</b> Una publicación en una revista depredadora puede restar en lugar de sumar. Pida que siempre confirmen la indexación en la página oficial del índice, no en la de la revista.">
       <p class="eyebrow">Paso 06 de 07 · Revista</p>
       <h2 class="ink">Elegir revista sin caer en trampas</h2>
       <div class="two">
@@ -267,8 +284,8 @@
       <div class="tools"><em>Herramientas:</em><span>Scimago</span><span>Scopus</span><span>Publindex</span><span>Think. Check. Submit.</span></div>
     </section>
 
-    <!-- 15 -->
-    <section class="slide" data-notes="<b>14:00–15:00.</b> Los rechazos y las revisiones mayores son parte del proceso. La IA ahorra horas organizando la respuesta, pero el tono y los argumentos los decide el autor.">
+    <!-- 16 -->
+    <section class="slide" data-notes="<b>14:15–15:00.</b> Los rechazos y las revisiones mayores son parte del proceso. La IA ahorra horas organizando la respuesta, pero el tono y los argumentos los decide el autor.">
       <p class="eyebrow">Paso 07 de 07 · Revisores</p>
       <h2 class="ink">Responder a los revisores</h2>
       <div class="two">
@@ -279,7 +296,7 @@
       <div class="tools"><em>Herramientas:</em><span>Claude</span><span>ChatGPT</span></div>
     </section>
 
-    <!-- 16 -->
+    <!-- 17 -->
     <section class="slide dark" data-notes="<b>15:00–17:15.</b> En cirugía plástica las fotos son el punto más sensible: nunca se suben fotos identificables a una herramienta abierta y siempre debe haber consentimiento específico para publicarlas.">
       <p class="eyebrow">Lo que no se negocia</p>
       <h2 class="ink">Cuatro líneas rojas</h2>
@@ -291,14 +308,14 @@
       </div>
     </section>
 
-    <!-- 17 -->
+    <!-- 18 -->
     <section class="slide dark" data-notes="<b>17:15–18:00.</b> Haga una pausa antes de leerla. La IA es la mejor herramienta que han tenido para investigar, siempre que cada paso pase por su criterio.">
       <hr class="rule">
       <h1 class="ink">La IA acelera.</h1>
       <h2 style="color:var(--glow)">El criterio sigue siendo suyo.</h2>
     </section>
 
-    <!-- 18 -->
+    <!-- 19 -->
     <section class="slide" data-notes="<b>18:00–20:00.</b> Deje esta diapositiva en pantalla mientras responde preguntas. Si el tiempo está justo, acorte la votación de la demostración inicial.">
       <p class="eyebrow">Para llevar</p>
       <h2 class="ink">Llévese el kit</h2>

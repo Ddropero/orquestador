@@ -28,9 +28,27 @@ export interface Articulo {
   doi?: string;
 }
 
+/** Un artículo leído entero de PubMed (efetch): lo que Claude recibe en la demo del chat. */
+export interface ArticuloLeido {
+  pmid: string;
+  titulo: string;
+  revista: string;
+  anio?: number;
+  resumen: string;
+}
+
+export interface OpcionesBusqueda {
+  /** Cuántos PMID devolver. Por defecto, los que se abren para confirmar una referencia. */
+  retmax?: number;
+  /** `relevance`: el orden «Best match» de PubMed. Sin él, el de NCBI por defecto. */
+  orden?: 'relevance';
+}
+
 export interface ClienteNcbi {
-  buscar(termino: string): Promise<{ total: number; ids: string[] }>;
+  buscar(termino: string, opciones?: OpcionesBusqueda): Promise<{ total: number; ids: string[] }>;
   resumir(ids: string[]): Promise<Articulo[]>;
+  /** Título, revista, año y resumen de cada PMID, en el orden pedido. */
+  leer(ids: string[]): Promise<ArticuloLeido[]>;
 }
 
 export interface OpcionesNcbi {
@@ -59,9 +77,23 @@ export function crearClienteNcbi(o: OpcionesNcbi): ClienteNcbi {
   let ultima = 0;
 
   async function pedir(ruta: 'esearch.fcgi' | 'esummary.fcgi', params: Record<string, string>): Promise<unknown> {
+    return pedirCrudo(ruta, { retmode: 'json', ...params }, 'application/json', async (res) => {
+      try {
+        return await res.json();
+      } catch {
+        throw new ErrorNcbi('NCBI devolvió una respuesta que no es JSON');
+      }
+    });
+  }
+
+  async function pedirCrudo<T>(
+    ruta: 'esearch.fcgi' | 'esummary.fcgi' | 'efetch.fcgi',
+    params: Record<string, string>,
+    acepta: string,
+    leerRespuesta: (res: Response) => Promise<T>,
+  ): Promise<T> {
     const url = new URL(`${base}/${ruta}`);
     url.searchParams.set('db', 'pubmed');
-    url.searchParams.set('retmode', 'json');
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
     url.searchParams.set('tool', o.tool);
     url.searchParams.set('email', o.email);
@@ -77,7 +109,7 @@ export function crearClienteNcbi(o: OpcionesNcbi): ClienteNcbi {
       try {
         const limite = AbortSignal.timeout(timeoutMs);
         res = await fetchImpl(url.toString(), {
-          headers: { accept: 'application/json' },
+          headers: { accept: acepta },
           signal: o.signal ? AbortSignal.any([limite, o.signal]) : limite,
         });
       } catch (error) {
@@ -90,18 +122,18 @@ export function crearClienteNcbi(o: OpcionesNcbi): ClienteNcbi {
         continue;
       }
       if (!res.ok) throw new ErrorNcbi(`NCBI respondió HTTP ${res.status}`);
-      try {
-        return await res.json();
-      } catch {
-        throw new ErrorNcbi('NCBI devolvió una respuesta que no es JSON');
-      }
+      return leerRespuesta(res);
     }
     throw new ErrorNcbi('NCBI no respondió tras el reintento');
   }
 
   return {
-    async buscar(termino) {
-      const datos = (await pedir('esearch.fcgi', { term: termino, retmax: String(RETMAX) })) as {
+    async buscar(termino, opciones) {
+      const datos = (await pedir('esearch.fcgi', {
+        term: termino,
+        retmax: String(opciones?.retmax ?? RETMAX),
+        ...(opciones?.orden ? { sort: opciones.orden } : {}),
+      })) as {
         esearchresult?: {
           count?: string;
           idlist?: string[];
@@ -147,7 +179,66 @@ export function crearClienteNcbi(o: OpcionesNcbi): ClienteNcbi {
       }
       return articulos;
     },
+
+    async leer(ids) {
+      if (ids.length === 0) return [];
+      const xml = await pedirCrudo('efetch.fcgi', { id: ids.join(','), retmode: 'xml' }, 'application/xml', async (res) => {
+        const texto = await res.text();
+        if (!/<PubmedArticleSet\b/.test(texto)) throw new ErrorNcbi('NCBI devolvió una respuesta que no es de PubMed');
+        return texto;
+      });
+      const porPmid = new Map(extraerArticulos(xml).map((a) => [a.pmid, a]));
+      return ids.map((id) => porPmid.get(id)).filter((a): a is ArticuloLeido => Boolean(a));
+    },
   };
+}
+
+const ENTIDADES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+/** Texto plano de un fragmento de XML de PubMed: sin etiquetas (<i>, <sup>…) y con las entidades resueltas. */
+export function textoXml(fragmento: string | undefined): string {
+  if (!fragmento) return '';
+  return fragmento
+    .replace(/<[^>]*>/g, '')
+    .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (entera, nombre: string) => {
+      if (nombre[0] === '#') {
+        const codigo = nombre[1] === 'x' || nombre[1] === 'X' ? Number.parseInt(nombre.slice(2), 16) : Number.parseInt(nombre.slice(1), 10);
+        return Number.isFinite(codigo) && codigo > 0 && codigo <= 0x10ffff ? String.fromCodePoint(codigo) : '';
+      }
+      return ENTIDADES[nombre.toLowerCase()] ?? entera;
+    })
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Lee el XML de efetch sin un analizador (en Workers no hay DOMParser). Basta con
+ * expresiones regulares porque de cada artículo solo se toman cinco etiquetas de
+ * un formato fijo de NCBI; lo que no se encuentra se deja vacío.
+ */
+export function extraerArticulos(xml: string): ArticuloLeido[] {
+  const articulos: ArticuloLeido[] = [];
+  for (const trozo of xml.split(/<PubmedArticle\b[^>]*>/).slice(1)) {
+    const cuerpo = trozo.split('</PubmedArticle>')[0] ?? '';
+    const pmid = /<PMID\b[^>]*>(\d{1,9})<\/PMID>/.exec(cuerpo)?.[1];
+    if (!pmid) continue;
+    const titulo = textoXml(/<ArticleTitle\b[^>]*>([\s\S]*?)<\/ArticleTitle>/.exec(cuerpo)?.[1]);
+    const revista = textoXml(
+      /<ISOAbbreviation>([\s\S]*?)<\/ISOAbbreviation>/.exec(cuerpo)?.[1] ?? /<Journal>[\s\S]*?<Title>([\s\S]*?)<\/Title>/.exec(cuerpo)?.[1],
+    );
+    const fecha = /<PubDate>([\s\S]*?)<\/PubDate>/.exec(cuerpo)?.[1] ?? '';
+    const anioTexto = /<Year>(\d{4})<\/Year>/.exec(fecha)?.[1] ?? /<MedlineDate>(\d{4})/.exec(fecha)?.[1];
+    const resumen = [...cuerpo.matchAll(/<AbstractText\b([^>]*)>([\s\S]*?)<\/AbstractText>/g)]
+      .map((m) => {
+        const etiqueta = /\bLabel="([^"]*)"/.exec(m[1] ?? '')?.[1];
+        const texto = textoXml(m[2]);
+        return etiqueta && texto ? `${textoXml(etiqueta)}: ${texto}` : texto;
+      })
+      .filter(Boolean)
+      .join('\n');
+    articulos.push({ pmid, titulo, revista, ...(anioTexto ? { anio: Number(anioTexto) } : {}), resumen });
+  }
+  return articulos;
 }
 
 export function normalizarTitulo(s: string): string {

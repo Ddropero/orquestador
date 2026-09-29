@@ -131,6 +131,14 @@ button:focus-visible,a:focus-visible,summary:focus-visible{ outline:3px solid va
 .repetir{ display:inline-block; margin-top:4px; padding:4px 0; font-weight:600; }
 @keyframes latido{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
 
+/* ---------- El mismo chat, con PubMed ---------- */
+.chat-pregunta{ font-family:'Source Serif 4',Georgia,serif; font-style:italic; font-size:1.05rem; color:var(--ink); margin-bottom:8px; }
+.chat-consulta code{ font-size:.8rem; word-break:break-word; }
+#chat .caja-ia{ margin-top:10px; }
+#chat h3{ margin-top:14px; }
+.fuentes .cita{ margin-bottom:2px; }
+.fuentes .revista{ display:block; font-size:.82rem; color:var(--soft); }
+
 /* ---------- Evidentia: etapas y embudo ---------- */
 .etapas li{ font-size:.92rem; }
 .etapas .estado{ font-size:.75rem; font-weight:700; border-radius:999px; padding:1px 8px; margin-left:4px; white-space:nowrap; }

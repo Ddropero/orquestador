@@ -33,18 +33,18 @@ function datosEmbebidos(html: string, id: string): any {
 }
 
 describe('/presentador: la presentación portada sin cambios visuales', () => {
-  it('conserva las 18 diapositivas idénticas, salvo el QR (1 y 18), el contacto (18) y los enganches del respaldo (3)', () => {
+  it('conserva las 19 diapositivas idénticas, salvo el QR (1 y 19), el contacto (19) y los enganches del respaldo (3)', () => {
     const b = secciones(BASE);
     const p = secciones(PRESENTADOR);
-    expect(p).toHaveLength(18);
+    expect(p).toHaveLength(19);
     p.forEach((s, i) => {
-      if (i === 0 || i === 17 || i === 2) return;
+      if (i === 0 || i === 18 || i === 2) return;
       expect(sinNota(s)).toBe(sinNota(b[i]!));
     });
     expect(p[0]).toContain('qr-portada');
-    expect(p[17]).toContain('qr-cierre');
-    expect(p[17]).not.toContain('[Código QR del kit]');
-    expect(p[17]).not.toContain('[su correo o red social]');
+    expect(p[18]).toContain('qr-cierre');
+    expect(p[18]).not.toContain('[Código QR del kit]');
+    expect(p[18]).not.toContain('[su correo o red social]');
     // En la 3, lo único nuevo son dos botones ocultos y un id.
     const sin3 = sinNota(p[2]!)
       .replace(/\s*<button id="btn-respaldo-claude"[^>]*>[^<]*<\/button>/, '')
@@ -53,17 +53,17 @@ describe('/presentador: la presentación portada sin cambios visuales', () => {
     expect(sin3).toBe(sinNota(b[2]!));
   });
 
-  it('las notas del orador conservan el texto original y solo añaden al final en la 1, la 3 y la 10', () => {
+  it('las notas del orador conservan el texto original y solo añaden al final en la 1, la 3 y la 11', () => {
     const b = secciones(BASE);
     const p = secciones(PRESENTADOR);
     p.forEach((s, i) => {
       const original = notaDe(b[i]!);
       const nueva = notaDe(s);
       expect(nueva.startsWith(original)).toBe(true);
-      if ([0, 2, 9].includes(i)) expect(nueva.length).toBeGreaterThan(original.length);
+      if ([0, 2, 10].includes(i)) expect(nueva.length).toBeGreaterThan(original.length);
       else expect(nueva).toBe(original);
     });
-    expect(notaDe(p[9]!)).toContain('PDF del ensayo');
+    expect(notaDe(p[10]!)).toContain('PDF del ensayo');
   });
 
   it('la nota de la 3 deja claro que la votación del celular reemplaza las manos, y el README dice lo mismo', () => {

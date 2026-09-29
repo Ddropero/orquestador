@@ -139,7 +139,7 @@
 
   // De estos tipos solo importa el último, igual que en compactar() del servidor: así
   // el celular no acumula un evento de totales por segundo durante la votación.
-  var UNICOS = { diapositiva: true, claude_texto: true, pubmed_buscando: true, evidentia_embudo: true, votacion: true, votos: true };
+  var UNICOS = { diapositiva: true, claude_texto: true, pubmed_buscando: true, evidentia_embudo: true, votacion: true, votos: true, chat_texto: true, chat_fuentes: true };
 
   /** Suma un evento al estado sin pintar. Devuelve true si cambió algo. */
   function incorporar(e){
@@ -161,9 +161,26 @@
     pintar();
   }
 
+  function mayorSeq(lista){
+    var m = -1;
+    lista.forEach(function(e){ if (valido(e) && e.seq > m) m = e.seq; });
+    return m;
+  }
+
   function reemplazar(lista){
+    lista = Array.isArray(lista) ? lista : [];
+    // Una foto más vieja que lo que ya se ve (la del sondeo puede venir de la caché de
+    // 1 s del servidor) solo suma: si reemplazara, la diapositiva podría volver atrás.
+    // Tras un reinicio la sala sigue numerando hacia arriba, así que una foto nueva
+    // siempre gana; la foto vacía del reinicio (código 4000) sí borra.
+    if (lista.length > 0 && eventos.length > 0 && mayorSeq(lista) < mayorSeq(eventos)) {
+      lista.forEach(incorporar);
+      ordenar();
+      pintar();
+      return;
+    }
     eventos = [];
-    (Array.isArray(lista) ? lista : []).forEach(incorporar);
+    lista.forEach(incorporar);
     ordenar();
     pintar();
   }
@@ -226,6 +243,7 @@
     pintarVotacion(est);
     pintarResumen(est);
     pintarReferencias(est);
+    pintarChat();
     pintarEvidentia();
     pintarPasos();
     pintarAvisos();
@@ -749,6 +767,101 @@
     pintarEmbudo(embudo, fallo);
   }
 
+  /* ---------- el mismo chat, con PubMed ---------- */
+
+  var CHAT = DATOS.chat || {};
+  var PASOS_CHAT = ["busqueda", "lectura", "respuesta"];
+  function textoPasoChat(e){
+    var n = cifra(e.cifra);
+    if (e.paso === "busqueda") {
+      return e.estado === "completada" && n !== null
+        ? "Búsqueda en PubMed: " + plural(n, "resultado", "resultados")
+        : "Búsqueda en PubMed con la consulta fija";
+    }
+    if (e.paso === "lectura") {
+      return e.estado === "completada" && n !== null
+        ? "Lectura: " + plural(n, "resumen", "resúmenes") + ", lo único que puede usar el modelo"
+        : "Lectura de los resúmenes";
+    }
+    if (e.estado === "completada" && n !== null) {
+      return "Respuesta: cita " + plural(n, "artículo", "artículos") + " de la búsqueda";
+    }
+    return e.estado === "falló" ? "Respuesta: no hubo, ni en vivo ni del ensayo" : "Respuesta del modelo";
+  }
+
+  /** El texto del modelo con cada «[PMID n]» de una fuente leída convertido en enlace. Nada se interpreta como HTML. */
+  function pintarTextoConCitas(nodo, t, pmids){
+    vaciar(nodo);
+    var patron = /\[PMID (\d{1,9})\]/g;
+    var desde = 0;
+    var m;
+    while ((m = patron.exec(t))) {
+      if (pmids.indexOf(m[1]) < 0) continue;
+      nodo.appendChild(document.createTextNode(t.slice(desde, m.index) + "["));
+      var a = enlaceExterno(el("a", null, "PMID " + m[1]));
+      a.href = "https://pubmed.ncbi.nlm.nih.gov/" + m[1] + "/";
+      nodo.appendChild(a);
+      nodo.appendChild(document.createTextNode("]"));
+      desde = m.index + m[0].length;
+    }
+    nodo.appendChild(document.createTextNode(t.slice(desde)));
+  }
+
+  function pintarChat(){
+    var hayInicio = eventos.some(function(e){ return e.tipo === "demo_inicio" && e.tema === "chat"; });
+    var evs = hayInicio ? desdeUltimoInicio("chat", ["chat_paso", "chat_fuentes", "chat_texto"]) : [];
+    if (!cambio("chat", (hayInicio ? "1|" : "0|") + seqs(evs))) return;
+    var seccion = $("chat");
+    if (!hayInicio) { seccion.hidden = true; return; }
+    seccion.hidden = false;
+    texto($("chat-pregunta"), CHAT.pregunta ? "«" + CHAT.pregunta + "»" : "");
+    texto($("chat-consulta"), CHAT.consulta || "");
+
+    var pasos = {};
+    var fuentes = null;
+    var respuesta = null;
+    var ensayo = false;
+    evs.forEach(function(e){
+      if (e.ensayo) ensayo = true;
+      if (e.tipo === "chat_paso") pasos[e.paso] = e;
+      else if (e.tipo === "chat_fuentes") fuentes = e;
+      else respuesta = e;
+    });
+
+    var lista = $("chat-pasos");
+    vaciar(lista);
+    PASOS_CHAT.forEach(function(p){
+      var e = pasos[p];
+      if (!e) return;
+      var li = el("li", null, textoPasoChat(e));
+      li.appendChild(el("span", "estado " + (CLASES_ESTADO[e.estado] || ""), e.estado));
+      if (e.ensayo) li.appendChild(el("span", "detalle", "Resultado del ensayo"));
+      lista.appendChild(li);
+    });
+
+    var pmids = [];
+    var ol = $("chat-fuentes");
+    vaciar(ol);
+    (fuentes && Array.isArray(fuentes.fuentes) ? fuentes.fuentes : []).forEach(function(f){
+      if (!f || !pmidValido(f.pmid)) return;
+      pmids.push(f.pmid);
+      var li = el("li", "si");
+      li.appendChild(el("span", "cita", f.titulo));
+      li.appendChild(el("span", "revista", f.revista + (typeof f.anio === "number" ? " · " + f.anio : "")));
+      var a = enlaceExterno(el("a", null, "Abrir en PubMed · PMID " + f.pmid));
+      a.href = "https://pubmed.ncbi.nlm.nih.gov/" + f.pmid + "/";
+      li.appendChild(a);
+      ol.appendChild(li);
+    });
+    $("chat-fuentes-titulo").hidden = pmids.length === 0;
+
+    $("chat-respuesta").hidden = !respuesta;
+    if (respuesta) pintarTextoConCitas($("chat-texto"), respuesta.texto_parcial, pmids);
+    var sello = $("chat-ensayo");
+    sello.hidden = !ensayo;
+    texto(sello, DATOS.fechaEnsayoChat ? "Respuesta de ensayo · grabada el " + fechaLarga(DATOS.fechaEnsayoChat) : "Respuesta de ensayo");
+  }
+
   /* ---------- el mapa de los siete pasos ---------- */
 
   var pasosNodos = [];
@@ -886,7 +999,8 @@
   var TEMAS = {
     resumen: "Claude resume la referencia " + DATOS.refResumen + " sin buscar en ninguna base de datos",
     verificacion: "Verificación de las cinco referencias en PubMed",
-    evidentia: "Evidentia busca y verifica la pregunta de la miel"
+    evidentia: "Evidentia busca y verifica la pregunta de la miel",
+    chat: "el mismo chat, ahora con PubMed"
   };
 
   function lineaDe(e){
@@ -906,6 +1020,7 @@
         return "Evidentia · el embudo: " + escalonesEmbudo(e).map(function(s){ return s.valor + " " + s.corto; }).join(" → ") +
           (e.ensayo ? " (ensayo)" : "");
       case "votacion": return e.estado === "abierta" ? "Se abre la votación del público" : "Se cierra la votación del público";
+      case "chat_paso": return "Chat con PubMed · " + textoPasoChat(e) + ": " + e.estado + (e.ensayo ? " (ensayo)" : "");
       case "aviso": return "Mensaje del ponente: " + e.texto;
       default: return null;
     }

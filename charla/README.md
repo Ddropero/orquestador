@@ -7,15 +7,15 @@ Un solo Worker de Cloudflare sirve tres cosas:
 
 | Ruta | Quién | Qué |
 |---|---|---|
-| `/presentador` | El ponente, con token | Las 18 diapositivas, los botones de la demo y un panel de controles. |
+| `/presentador` | El ponente, con token | Las 19 diapositivas, los botones de las demos y un panel de controles. |
 | `/vivo` | El público, desde el QR | Solo lectura: la diapositiva actual, lo que hace la IA paso a paso y el kit para llevar. |
-| `/api/...` | Ver `src/index.ts` | Las demos (Claude, PubMed, Evidentia) y la sala. Todo lo que cuesta dinero exige el token. |
+| `/api/...` | Ver `src/index.ts` | Las demos (Claude, PubMed, el chat con PubMed, Evidentia) y la sala. Todo lo que cuesta dinero exige el token. |
 
 ## Reglas que el código hace cumplir
 
 1. **Todo en español y de usted.** Una prueba (`test/contenido.test.ts`) busca tuteo en cada texto visible y falla si lo encuentra.
 2. **Ninguna clave en el cliente.** `ANTHROPIC_API_KEY`, `PRESENTER_TOKEN` y `NCBI_API_KEY` son secretos del Worker. Las páginas construidas se comprueban contra patrones de clave.
-3. **El público no puede llamar a Claude.** Solo `POST /api/claude/resumen` llama a la API, solo con sesión del presentador, y solo con el prompt fijo de `datos/contenido.json`. El WebSocket público cierra la conexión a quien le escriba.
+3. **El público no puede llamar a Claude.** Solo `POST /api/claude/resumen` y `POST /api/chat/responder` llaman a la API, solo con sesión del presentador, y solo con los prompts fijos de `datos/contenido.json`. El WebSocket público cierra la conexión a quien le escriba.
 4. **Las referencias inventadas nunca van sueltas.** En `/vivo` una referencia solo aparece cuando PubMed dio su veredicto, y las fabricadas van en forma corta (sin su DOI inventado) con la etiqueta «Ejercicio docente: referencias fabricadas a propósito».
 5. **Cero datos de pacientes.** La demo usa referencias bibliográficas; Evidentia recibe una pregunta PICO, no un caso.
 6. **Cada componente en vivo tiene respaldo sin red** (ver abajo).
@@ -40,6 +40,7 @@ La Sala es un único Durable Object con la API de hibernación: guarda el histor
 |---|---|---|
 | Claude | Error, o más de 25 s | «Respuesta de ensayo · grabada el <fecha>» |
 | PubMed | Error, o 15 s sin señal | «Resultado del ensayo del <fecha>» |
+| Chat con PubMed | PubMed o Claude fallan, o más de 30 s | «Respuesta de ensayo · grabada el <fecha>», con sus fuentes |
 | Evidentia | No lanza o no termina | Enlace al resultado del ensayo en el panel del presentador. **Es un enlace a internet**: sin red no abre, así que en el ensayo se guarda ese resultado como PDF en el escritorio (paso 5) |
 | Diapositivas | Sin red | La pestaña sigue (fuentes embebidas, sin CDN); un service worker guarda la última copia; y `/presentador/descargar` da un archivo que abre desde el disco con los respaldos dentro |
 
@@ -81,7 +82,7 @@ En el mismo portátil y la misma red de la charla:
 
 1. `/presentador` → tecla **C** → «Lanzar la pregunta de la miel». Espere a que el panel diga que Evidentia terminó (2–8 min).
 2. Pase por las diapositivas con el celular abierto en `/vivo`.
-3. Use los dos botones de la diapositiva 3 y compruebe que el celular los sigue.
+3. Use los dos botones de la diapositiva 3 y el de la 4 (el chat con PubMed), y compruebe que el celular los sigue.
 4. Grabe los respaldos con lo que acaba de salir en vivo y vuelva a desplegar:
 
    ```bash
@@ -100,7 +101,8 @@ Después del 30 de septiembre solo se corrigen errores bloqueantes.
 - Antes de subir: `/presentador` (eso renueva la sesión), **C**, «Lanzar la pregunta de la miel». Cierre el panel.
 - Diapositiva 1: invite a escanear el QR o a escribir la dirección; el panel muestra cuántos están conectados.
 - Diapositiva 3: la votación en el celular reemplaza las manos por cada una. (1) **C** → «Abrir la votación» y pida que voten; (2) primer botón (Claude) y, mientras responde, lea la lista en forma corta; (3) segundo botón (PubMed): cierra la votación y verifica. Solo si el público no tiene red o no hay tiempo: una sola mano alzada (¿cuántas de las cinco existen?). Si a los 8 s no ha llegado nada, aparece el botón «Mostrar la respuesta del ensayo»; a los 25 s el respaldo entra solo. Pasar a la diapositiva 4 también cierra la votación; con los veredictos a la vista no se vuelve a abrir sin reiniciar la sala.
-- Diapositiva 10: **C** → «Abrir el resultado en vivo» (o el del ensayo si no terminó). Sin red, ninguno de los dos abre: el PDF del ensayo en el escritorio.
+- Diapositiva 4 (3:00–4:00): «Preguntarle a Claude con PubMed». El sistema busca con la consulta fija, Claude responde solo con los resúmenes que encontró y cita cada uno por su PMID; en `/vivo` cada PMID es un enlace. Invite a abrir uno desde el celular. Si a los 8 s no ha llegado nada, aparece el botón del ensayo; a los 30 s entra solo. Cuenta en el cupo diario de Claude.
+- Diapositiva 11: **C** → «Abrir el resultado en vivo» (o el del ensayo si no terminó). Sin red, ninguno de los dos abre: el PDF del ensayo en el escritorio.
 - El punto de la barra inferior: verde = conectado; dorado = sin conexión (las demos usan los respaldos); rojo = la sesión venció (abra `/presentador` en otra pestaña y vuelva a entrar; esta sigue con los respaldos).
 - Teclas: ← → cambian de diapositiva, **N** notas, **C** controles.
 

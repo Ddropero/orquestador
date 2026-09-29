@@ -21,6 +21,8 @@ import { construir } from './construir.mjs';
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TOKEN = 'token-de-prueba-e2e-suficientemente-largo-2026';
 const TEXTO_ENSAYO = 'Respuesta de ensayo grabada para las pruebas de extremo a extremo. Usted verifica.';
+const TEXTO_CHAT_ENSAYO = 'Respuesta de ensayo del chat para las pruebas: acorta los síntomas menos de un día [PMID 24811411].';
+const FUENTES_CHAT = ['24811411', '17163267', '25640810'];
 const FECHA_ENSAYO = '2026-09-30';
 // El embudo del ensayo: distinto del que devuelve el simulador, para saber cuál se ve.
 const CIFRAS_ENSAYO = { pubmed: 29, europepmc: 11, unicas: 34, comprobadas: 18, retractadas: 1, afirmaciones: 3, escaladas: 1 };
@@ -94,6 +96,13 @@ try {
     claude: { texto: TEXTO_ENSAYO, fecha: FECHA_ENSAYO, modelo: 'claude-sonnet-5' },
     pubmed: { ...respaldosBase.pubmed, fecha: FECHA_ENSAYO },
     evidentia: { runId: 'ensayo-e2e', fecha: FECHA_ENSAYO, cifras: CIFRAS_ENSAYO },
+    chat: {
+      fecha: FECHA_ENSAYO,
+      modelo: 'claude-sonnet-5',
+      resultados: 3,
+      fuentes: FUENTES_CHAT.map((pmid, i) => ({ pmid, titulo: `Artículo del ensayo ${i + 1}`, revista: 'Revista', anio: 2014 + i })),
+      texto: TEXTO_CHAT_ENSAYO,
+    },
   };
   const archivoRespaldos = path.join(tmp, 'respaldos.json');
   await writeFile(archivoRespaldos, JSON.stringify(respaldosE2e));
@@ -202,7 +211,7 @@ try {
     cookie = sc.split(';')[0];
     const p = await get('/presentador', { headers: { cookie } });
     const html = await p.text();
-    comprobar(p.status === 200 && (html.match(/<section class="slide/g) ?? []).length === 18, '/presentador con sesión: 18 diapositivas');
+    comprobar(p.status === 200 && (html.match(/<section class="slide/g) ?? []).length === 19, '/presentador con sesión: 19 diapositivas');
     comprobar((p.headers.get('content-security-policy') ?? '').includes("'sha256-"), '/presentador con CSP por hash');
     comprobar(p.headers.get('x-charla-pagina') === 'presentador' && (p.headers.get('cache-control') ?? '').includes('no-store') && (p.headers.get('cache-control') ?? '').includes('no-transform'), '/presentador marcada, sin caché y con no-transform');
     comprobar((p.headers.get('set-cookie') ?? '').startsWith('presentador-local='), 'abrir /presentador con sesión la renueva (cookie fresca)');
@@ -290,8 +299,70 @@ try {
     await sim.modo({ ncbi: 'ok' });
   }
 
+  // ---------------------------------------------------------------- chat con PubMed
+  seccion('Demo 2: el mismo chat, con PubMed (en vivo)');
+  {
+    const consulta = JSON.parse(await readFile(path.join(RAIZ, 'datos/contenido.json'), 'utf8')).chat.consulta;
+    comprobar((await get('/api/chat/responder', { method: 'POST', body: '{}' })).status === 401, 'sin sesión → 401');
+    const antes = (await (await get('/api/presentador/estado', { headers: bearer })).json()).claudeHoy;
+    const r = await get('/api/chat/responder', { method: 'POST', headers: bearer, body: '{}' });
+    comprobar(r.status === 200 && (r.headers.get('content-type') ?? '').includes('ndjson'), 'con Bearer → flujo NDJSON');
+    const m = await ndjson(r);
+    const fin = m.find((x) => x.t === 'fin');
+    comprobar(fin && fin.resultados === 3 && fin.fuentes.map((f) => f.pmid).join() === FUENTES_CHAT.join(), 'lee los tres artículos que devolvió la consulta fija');
+    comprobar(fin && fin.citados.join() === '24811411,25640810' && fin.texto.includes('[PMID 25640810]'), 'la respuesta cita dos de ellos por su PMID');
+    comprobar(fin && !fin.texto.includes('99999999') && fin.texto.includes('cita retirada'), 'la cita a un PMID que no salió de la búsqueda se retira');
+    const reg = await sim.registro();
+    const busqueda = reg.ncbi.filter((l) => l.term === consulta).pop();
+    comprobar(busqueda && busqueda.sort === 'relevance' && busqueda.retmax === '3', 'busca con la consulta fija: los 3 primeros por relevancia');
+    comprobar(reg.ncbi.some((l) => l.ruta.endsWith('efetch.fcgi') && l.id === FUENTES_CHAT.join(',') && l.tool === 'charla-caso-clinico'), 'lee los resúmenes con efetch, con tool y email');
+    const ll = reg.claude[reg.claude.length - 1];
+    comprobar(ll && ll.tools === null && ll.system === null && ll.model === 'claude-sonnet-5', 'Claude sin herramientas ni prompt de sistema');
+    comprobar(ll && String(ll.prompt).includes('Resúmenes de PubMed') && String(ll.prompt).includes('PMID 17163267') && String(ll.prompt).includes('oseltamivir'), 'el prompt es el fijo del servidor, con los resúmenes leídos');
+    const est = await (await get('/api/sala/estado')).json();
+    const pasos = Object.fromEntries(est.eventos.filter((e) => e.tipo === 'chat_paso').map((e) => [e.paso, e]));
+    comprobar(pasos.busqueda?.cifra === 3 && pasos.lectura?.cifra === 3 && pasos.respuesta?.cifra === 2 && pasos.respuesta?.estado === 'completada', 'el público ve los tres pasos con sus cifras');
+    const fuentes = est.eventos.find((e) => e.tipo === 'chat_fuentes');
+    comprobar(fuentes && fuentes.fuentes.length === 3 && fuentes.fuentes.every((f) => /^\d+$/.test(f.pmid) && f.titulo && !('resumen' in f)), 'y las tres fuentes con PMID y título, sin los resúmenes');
+    const ct = est.eventos.filter((e) => e.tipo === 'chat_texto');
+    comprobar(ct.length === 1 && ct[0].texto_parcial === fin?.texto && !ct[0].ensayo, 'el público recibe la respuesta revisada, sin marca de ensayo');
+    comprobar(est.eventos.every((e) => !JSON.stringify(e).includes('SOLO los resúmenes')), 'la instrucción del prompt no llega al público');
+    comprobar(est.eventos.some((e) => e.tipo === 'claude_texto'), 'la respuesta de la demo 1 sigue ahí para su comparación');
+    const despues = (await (await get('/api/presentador/estado', { headers: bearer })).json()).claudeHoy;
+    comprobar(despues === antes + 1, 'cuenta en el cupo diario de Claude');
+  }
+
+  seccion('Demo 2: chat con PubMed caído → respaldo');
+  {
+    await sim.modo({ ncbi: 'caido' });
+    const antes = (await (await get('/api/presentador/estado', { headers: bearer })).json()).claudeHoy;
+    const m = await ndjson(await get('/api/chat/responder', { method: 'POST', headers: bearer, body: '{}' }));
+    const r = m.find((x) => x.t === 'respaldo');
+    comprobar(r && r.texto === TEXTO_CHAT_ENSAYO && r.fecha === FECHA_ENSAYO && /PubMed no respondió/.test(r.motivo), `llega la respuesta del ensayo con su fecha («${r?.motivo}»)`);
+    const despues = (await (await get('/api/presentador/estado', { headers: bearer })).json()).claudeHoy;
+    comprobar(despues === antes, 'sin PubMed no se llama a Claude');
+    const est = await (await get('/api/sala/estado')).json();
+    const ch = est.eventos.filter((e) => e.tipo.startsWith('chat_'));
+    comprobar(ch.length > 0 && ch.filter((e) => e.tipo !== 'chat_paso' || e.estado === 'completada').every((e) => e.ensayo === true), 'el público ve el ensayo marcado como tal');
+    await sim.modo({ ncbi: 'html' });
+    const h = await ndjson(await get('/api/chat/responder', { method: 'POST', headers: bearer, body: '{}' }));
+    comprobar(h.some((x) => x.t === 'respaldo'), 'una página antibot en lugar de PubMed también pasa al ensayo');
+    await sim.modo({ ncbi: 'ok' });
+  }
+
+  seccion('Demo 2: chat con Claude caído → respaldo');
+  {
+    await sim.modo({ claude: 'error' });
+    const m = await ndjson(await get('/api/chat/responder', { method: 'POST', headers: bearer, body: '{}' }));
+    const r = m.find((x) => x.t === 'respaldo');
+    comprobar(r && r.texto === TEXTO_CHAT_ENSAYO && /Claude no respondió/.test(r.motivo), `llega la respuesta del ensayo («${r?.motivo}»)`);
+    await sim.modo({ claude: 'ok' });
+    const pedida = await get('/api/sala/respaldo', { method: 'POST', headers: bearer, body: '{"tipo":"chat"}' });
+    comprobar(pedida.status === 200 && (await pedida.json()).ok === true, 'el presentador puede pedir el ensayo sin pregunta en curso');
+  }
+
   // ---------------------------------------------------------------- Evidentia
-  seccion('Demo 2: Evidentia');
+  seccion('Demo 3: Evidentia');
   {
     const r = await get('/api/evidentia/lanzar', { method: 'POST', headers: bearer, body: '{}' });
     const d = await r.json();
@@ -320,7 +391,7 @@ try {
     comprobar(mismoObjeto(en.evidentia?.cifras, CIFRAS_SIMULADOR), 'y las cifras del embudo');
   }
 
-  seccion('Demo 2: Evidentia caída');
+  seccion('Demo 3: Evidentia caída');
   {
     await sim.modo({ evidentia: 'caido' });
     comprobar((await get('/api/sala/reiniciar', { method: 'POST', headers: bearer, body: '{}' })).status === 200, 'reiniciar la sala');
@@ -737,7 +808,7 @@ try {
     await pres.fill('#token', TOKEN);
     await Promise.all([pres.waitForNavigation(), pres.click('button[type="submit"]')]);
     await pres.waitForSelector('.slide.active');
-    comprobar((await pres.$$('.slide')).length === 18, 'entra con el token y ve 18 diapositivas');
+    comprobar((await pres.$$('.slide')).length === 19, 'entra con el token y ve 19 diapositivas');
     comprobar((await pres.$$('.qr')).length === 2, 'el QR está en la portada y en el cierre');
     await pres.keyboard.press('ArrowRight');
     await pres.keyboard.press('ArrowRight');
@@ -752,6 +823,25 @@ try {
     comprobar(v1 === true && (await pres.innerText('#v1')).includes('30184455'), 'la referencia 2 aparece con su PMID');
     await esperar(async () => ((await pres.innerText('#demo-status')).includes('terminada') ? true : null), 20_000);
     comprobar((await pres.getAttribute('#v2', 'class'))?.includes('no') && (await pres.innerText('#v2')).includes('No existe'), 'la referencia 3 sale como inexistente');
+    await pres.keyboard.press('ArrowRight');
+    await pres.waitForSelector('#chat.active #btn-chat:not([disabled])');
+    await pres.click('#btn-chat');
+    const chatListo = await esperar(async () => ((await pres.innerText('#chat-status')).includes('Ábralos antes de citarlos') ? true : null), 20_000);
+    comprobar(chatListo === true && (await pres.$$('#chat-fuentes li')).length === 3, 'el chat con PubMed responde en vivo con sus tres fuentes');
+    comprobar((await pres.innerText('#chat-out')).includes('[PMID 24811411]') && !(await pres.innerText('#chat-out')).includes('99999999'), 'con las citas revisadas');
+    const enVivo = await esperar(async () => ((await vivo.$$('#chat-fuentes a')).length === 3 ? true : null), 10_000);
+    comprobar(enVivo === true && !(await vivo.$eval('#chat', (e) => e.hidden)), '/vivo muestra el chat con sus tres fuentes enlazadas a PubMed');
+    comprobar((await vivo.$('#chat-texto a[href="https://pubmed.ncbi.nlm.nih.gov/25640810/"]')) !== null, 'y cada PMID citado en el texto es un enlace');
+    const tarjetaChat = (await vivo.innerText('#chat')).toLowerCase();
+    comprobar(!tarjetaChat.includes('99999999') && tarjetaChat.includes('abra cada artículo antes de citarlo'), 'sin el PMID ajeno y con el sello de texto generado por IA');
+    // CHARLA_CAPTURAS=<carpeta>: guarda cómo se ven la diapositiva y la tarjeta de /vivo.
+    if (process.env.CHARLA_CAPTURAS) {
+      await pres.screenshot({ path: path.join(process.env.CHARLA_CAPTURAS, 'diapositiva-4-chat.png') });
+      await vivo.locator('#chat').screenshot({ path: path.join(process.env.CHARLA_CAPTURAS, 'vivo-chat.png') });
+    }
+    // De vuelta a la lista de cinco: el resto de la prueba usa sus botones.
+    await pres.keyboard.press('ArrowLeft');
+    await pres.waitForSelector('#demo.active');
     await pres.keyboard.press('c');
     await pres.waitForSelector('#controles:not([hidden])');
     const estado = await esperar(async () => ((await pres.innerText('#c-estado')).includes('Clave de Anthropic: configurada') ? true : null), 10_000);
@@ -828,14 +918,14 @@ try {
     await diapositiva(3);
     await tel.waitForFunction(() => document.getElementById('diapo-n')?.textContent === '3', null, { timeout: 5000 }).catch(() => {});
     comprobar(await oculto(tel, '#pasos'), 'en la diapositiva 3, durante el ejercicio, el mapa sigue oculto');
-    await diapositiva(8);
-    const resaltado = await tel.waitForSelector('#pasos.resaltado', { timeout: 5000 }).catch(() => null);
-    comprobar(resaltado !== null && (await tel.getAttribute('#diapo-paso-enlace', 'href')) === '#pasos', 'en la diapositiva 8 se resalta el mapa y el atajo lleva a él');
-    comprobar(!(await oculto(tel, '#pasos')) && !(await oculto(tel, '#kit-prompts')), 'y desde ahí se ven el mapa y su atajo en el kit');
     await diapositiva(9);
+    const resaltado = await tel.waitForSelector('#pasos.resaltado', { timeout: 5000 }).catch(() => null);
+    comprobar(resaltado !== null && (await tel.getAttribute('#diapo-paso-enlace', 'href')) === '#pasos', 'en la diapositiva 9 se resalta el mapa y el atajo lleva a él');
+    comprobar(!(await oculto(tel, '#pasos')) && !(await oculto(tel, '#kit-prompts')), 'y desde ahí se ven el mapa y su atajo en el kit');
+    await diapositiva(10);
     const actual = await tel.waitForSelector('#paso-1.actual', { timeout: 5000 }).catch(() => null);
     const paso1 = await tel.$eval('#paso-1', (d) => ({ abierto: d.open, marca: d.querySelector('.paso-marca')?.textContent }));
-    comprobar(actual !== null && paso1.abierto && paso1.marca === 'En pantalla', 'tras publicar la diapositiva 9 se resalta y se abre el paso 01');
+    comprobar(actual !== null && paso1.abierto && paso1.marca === 'En pantalla', 'tras publicar la diapositiva 10 se resalta y se abre el paso 01');
     comprobar(!(await tel.$eval('#pasos', (e) => e.classList.contains('resaltado'))) && (await tel.$$('#mapa-pasos details.actual')).length === 1, 'solo el paso 01 queda resaltado');
     comprobar(
       (await tel.getAttribute('#diapo-paso-enlace', 'href')) === '#paso-1' && (await texto(tel, '#diapo-paso-enlace')).includes('paso 01'),
@@ -848,9 +938,9 @@ try {
     const avisoCopia = await esperar(async () => (await texto(tel, '#paso-1 .copiado')) || null, 3000, 100);
     const portapapeles = await tel.evaluate(() => navigator.clipboard.readText()).catch(() => null);
     comprobar(avisoCopia === 'Prompt copiado.' && portapapeles === datosVivo.pasos[0].prompt, `copiar deja el prompt en el portapapeles («${avisoCopia}»)`);
-    await diapositiva(10);
+    await diapositiva(11);
     await tel.waitForSelector('#paso-2.actual', { timeout: 5000 }).catch(() => {});
-    comprobar(await tel.$eval('#paso-1', (d) => d.classList.contains('visto') && !d.classList.contains('actual') && !d.open), 'con la 10, el paso 01 queda como visto y se cierra solo');
+    comprobar(await tel.$eval('#paso-1', (d) => d.classList.contains('visto') && !d.classList.contains('actual') && !d.open), 'con la 11, el paso 01 queda como visto y se cierra solo');
 
     // ------------------------------------------------ la votación desde el panel
     // La sala se reinició por la API y no desde este panel, que aún cree que el público

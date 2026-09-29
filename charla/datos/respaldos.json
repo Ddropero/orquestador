@@ -8,16 +8,32 @@
       {
         "ref": 1,
         "consultas": [
-          { "via": "título", "resultados": 0, "coincide": false },
-          { "via": "DOI", "resultados": 0, "coincide": false },
-          { "via": "autor", "resultados": 0, "coincide": false }
+          {
+            "via": "título",
+            "resultados": 0,
+            "coincide": false
+          },
+          {
+            "via": "DOI",
+            "resultados": 0,
+            "coincide": false
+          },
+          {
+            "via": "autor",
+            "resultados": 0,
+            "coincide": false
+          }
         ],
         "existe": false
       },
       {
         "ref": 2,
         "consultas": [
-          { "via": "título", "resultados": 2, "coincide": true }
+          {
+            "via": "título",
+            "resultados": 2,
+            "coincide": true
+          }
         ],
         "existe": true,
         "pmid": "30184455"
@@ -25,16 +41,32 @@
       {
         "ref": 3,
         "consultas": [
-          { "via": "título", "resultados": 1, "coincide": false },
-          { "via": "DOI", "resultados": 0, "coincide": false },
-          { "via": "autor", "resultados": 0, "coincide": false }
+          {
+            "via": "título",
+            "resultados": 1,
+            "coincide": false
+          },
+          {
+            "via": "DOI",
+            "resultados": 0,
+            "coincide": false
+          },
+          {
+            "via": "autor",
+            "resultados": 0,
+            "coincide": false
+          }
         ],
         "existe": false
       },
       {
         "ref": 4,
         "consultas": [
-          { "via": "título", "resultados": 13, "coincide": true }
+          {
+            "via": "título",
+            "resultados": 13,
+            "coincide": true
+          }
         ],
         "existe": true,
         "pmid": "24718923"
@@ -42,13 +74,26 @@
       {
         "ref": 5,
         "consultas": [
-          { "via": "título", "resultados": 0, "coincide": false },
-          { "via": "DOI", "resultados": 0, "coincide": false },
-          { "via": "autor", "resultados": 0, "coincide": false }
+          {
+            "via": "título",
+            "resultados": 0,
+            "coincide": false
+          },
+          {
+            "via": "DOI",
+            "resultados": 0,
+            "coincide": false
+          },
+          {
+            "via": "autor",
+            "resultados": 0,
+            "coincide": false
+          }
         ],
         "existe": false
       }
     ]
   },
-  "evidentia": null
+  "evidentia": null,
+  "chat": null
 }

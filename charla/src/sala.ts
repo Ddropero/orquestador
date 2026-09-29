@@ -27,12 +27,14 @@ import {
   DIAPOSITIVA_DEMO,
   CONFIG,
   PREGUNTA_EVIDENTIA,
+  CHAT,
   promptResumen,
   hoyBogota,
   type VerificacionRegistrada,
 } from './contenido.js';
 import { crearClienteNcbi, verificarReferencia } from './pubmed.js';
 import { generarResumen, describirError, detalleError } from './claude.js';
+import { fuenteDe, promptChat, revisarCitas, type Fuente } from './chat.js';
 import * as evidentia from './evidentia.js';
 import { cargarRespaldos } from './respaldos.js';
 import {
@@ -54,6 +56,8 @@ import {
 
 const MAX_CONEXIONES = 2000;
 const PLAZO_CLAUDE_MS = 25_000;
+/** La demo del chat: búsqueda, lectura y respuesta. Más que el resumen porque son tres pasos en serie. */
+const PLAZO_CHAT_MS = 30_000;
 const INTERVALO_TEXTO_MS = 250;
 const SONDEO_EVIDENTIA_MS = 5_000;
 const PLAZO_EVIDENTIA_MS = 15 * 60_000;
@@ -115,6 +119,7 @@ export class Sala extends DurableObject<Env> {
   private seq = 0;
   private claude: AbortController | null = null;
   private verificacion: AbortController | null = null;
+  private chat: AbortController | null = null;
   /** La votación en curso o la última; `null` si no hay ninguna desde el último reinicio. */
   private votacion: Votacion | null = null;
   /** Número de la última ronda que existió. Sobrevive al reinicio: un celular con una ronda vieja no vota en la nueva. */
@@ -164,6 +169,8 @@ export class Sala extends DurableObject<Env> {
           return this.resumen();
         case '/pubmed/verificar':
           return this.verificar();
+        case '/chat/responder':
+          return this.responderChat();
         case '/evidentia/lanzar':
           return this.lanzarEvidentia();
         case '/votacion':
@@ -183,6 +190,7 @@ export class Sala extends DurableObject<Env> {
             claude: (await this.ctx.storage.get('ultimo_resumen')) ?? null,
             pubmed: (await this.ctx.storage.get('ultima_verificacion')) ?? null,
             evidentia: (await this.ctx.storage.get('ultimo_evidentia')) ?? null,
+            chat: (await this.ctx.storage.get('ultimo_chat')) ?? null,
           });
         case '/presentador/costos':
           return json({ costos: (await this.ctx.storage.get<Costo[]>('costos')) ?? [] });
@@ -280,12 +288,13 @@ export class Sala extends DurableObject<Env> {
   /**
    * Para empezar la charla limpia después del ensayo. Conserva costos, respaldos
    * grabados y la corrida de Evidentia en curso: el ponente la lanza antes de subir
-   * y limpia la sala después; olvidarla lo dejaría sin enlace en la diapositiva 10.
+   * y limpia la sala después; olvidarla lo dejaría sin enlace en la diapositiva 11.
    * La votación se cierra y sus votos se borran; el número de ronda sigue creciendo.
    */
   private async reiniciar(): Promise<Response> {
     this.claude?.abort('reinicio');
     this.verificacion?.abort('reinicio');
+    this.chat?.abort('reinicio');
     this.cancelarDifusionVotos();
     this.votacion = null;
     this.salVotacion = '';
@@ -325,6 +334,14 @@ export class Sala extends DurableObject<Env> {
       }
       return json({ ok: true });
     }
+    if (tipo === 'chat') {
+      if (this.chat) this.chat.abort('respaldo');
+      else {
+        await this.emitir({ tipo: 'demo_inicio', tema: 'chat' });
+        await this.difundirRespaldoChat();
+      }
+      return json({ ok: true });
+    }
     return json({ error: 'tipo_invalido' }, 400);
   }
 
@@ -354,7 +371,7 @@ export class Sala extends DurableObject<Env> {
       votacion: resumenVotacion(this.votacion),
       // Con los veredictos a la vista no se abre otra votación: el panel apaga el botón.
       verificacionALaVista: this.verificacionALaVista(),
-      enCurso: { claude: Boolean(this.claude), verificacion: Boolean(this.verificacion) },
+      enCurso: { claude: Boolean(this.claude), verificacion: Boolean(this.verificacion), chat: Boolean(this.chat) },
     });
   }
 
@@ -562,7 +579,153 @@ export class Sala extends DurableObject<Env> {
     return sinRespaldo;
   }
 
-  // ---------------------------------------------------------- demo 2: Evidentia
+  // ------------------------------------------------ demo 2: el mismo chat, con PubMed
+
+  private responderChat(): Response {
+    if (this.chat) return json({ error: 'en_curso', mensaje: 'Ya hay una pregunta al chat en curso.' }, 409);
+    const control = new AbortController();
+    this.chat = control;
+    const { respuesta, enviar, cerrar } = flujoNdjson();
+    const tarea = this.ejecutarChat(control, enviar).finally(() => {
+      if (this.chat === control) this.chat = null;
+      cerrar();
+    });
+    this.ctx.waitUntil(tarea);
+    return respuesta;
+  }
+
+  /**
+   * Busca en PubMed con la consulta fija, lee los resúmenes y le pide a Claude que
+   * responda solo con ellos. El público ve cada paso; las fuentes salen de PubMed,
+   * no del modelo, y las citas de la respuesta se revisan contra ellas.
+   */
+  private async ejecutarChat(control: AbortController, enviar: Enviar): Promise<void> {
+    const emitirYEnviar = async (e: Record<string, unknown>) => {
+      const publicado = await this.emitir(e);
+      if (publicado) enviar({ t: 'evento', evento: publicado });
+    };
+    await this.emitir({ tipo: 'demo_inicio', tema: 'chat' });
+
+    const hoy = hoyBogota();
+    const clave = `claude:${hoy}`;
+    const usados = (await this.ctx.storage.get<number>(clave)) ?? 0;
+    if (usados >= CONFIG.limiteClaudeDiario) {
+      return this.respaldoChat(enviar, 'Se alcanzó el cupo diario de consultas a Claude.');
+    }
+    if (!this.env.ANTHROPIC_API_KEY) {
+      return this.respaldoChat(enviar, 'El servidor no tiene configurada la clave de Anthropic.');
+    }
+
+    const plazo = setTimeout(() => control.abort('plazo'), PLAZO_CHAT_MS);
+    const inicio = Date.now();
+    let etapa: 'pubmed' | 'claude' = 'pubmed';
+    try {
+      const cliente = crearClienteNcbi({
+        ...(this.env.NCBI_BASE_URL ? { base: this.env.NCBI_BASE_URL } : {}),
+        tool: this.env.NCBI_TOOL,
+        email: this.env.CONTACT_EMAIL,
+        ...(this.env.NCBI_API_KEY ? { apiKey: this.env.NCBI_API_KEY } : {}),
+        signal: control.signal,
+      });
+
+      await emitirYEnviar({ tipo: 'chat_paso', paso: 'busqueda', estado: 'en curso' });
+      const { total, ids } = await cliente.buscar(CHAT.consulta, { retmax: CHAT.articulos, orden: 'relevance' });
+      await emitirYEnviar({ tipo: 'chat_paso', paso: 'busqueda', estado: 'completada', cifra: total });
+      if (ids.length === 0) throw new Error('la consulta no devolvió artículos');
+
+      await emitirYEnviar({ tipo: 'chat_paso', paso: 'lectura', estado: 'en curso' });
+      const articulos = await cliente.leer(ids);
+      if (articulos.length === 0) throw new Error('no se pudo leer ningún artículo');
+      const fuentes: Fuente[] = articulos.map(fuenteDe);
+      await emitirYEnviar({ tipo: 'chat_paso', paso: 'lectura', estado: 'completada', cifra: articulos.length });
+      await emitirYEnviar({ tipo: 'chat_fuentes', fuentes });
+
+      etapa = 'claude';
+      await this.ctx.storage.put(clave, usados + 1);
+      await emitirYEnviar({ tipo: 'chat_paso', paso: 'respuesta', estado: 'en curso' });
+      const pmids = articulos.map((a) => a.pmid);
+      let ultimoEnvio = 0;
+      const r = await generarResumen({
+        apiKey: this.env.ANTHROPIC_API_KEY,
+        ...(this.env.ANTHROPIC_BASE_URL ? { baseURL: this.env.ANTHROPIC_BASE_URL } : {}),
+        modelo: CONFIG.modelo,
+        prompt: promptChat(CHAT.instruccion, CHAT.pregunta, articulos),
+        signal: control.signal,
+        precio: CONFIG.precioUsdPorMillon,
+        alTexto: (acumulado) => {
+          // Una cita a medio escribir no se muestra hasta que se cierra: si no, un PMID
+          // incompleto parecería una cita ajena por un instante.
+          const visible = revisarCitas(acumulado.replace(/\[?\s*PMID[^\]]*$/i, ''), pmids).texto;
+          enviar({ t: 'texto', texto: visible });
+          const ahora = Date.now();
+          if (ahora - ultimoEnvio >= INTERVALO_TEXTO_MS && visible.trim()) {
+            ultimoEnvio = ahora;
+            void this.emitir({ tipo: 'chat_texto', texto_parcial: visible });
+          }
+        },
+      });
+      if (control.signal.aborted) throw new Error(String(control.signal.reason));
+
+      const revisado = revisarCitas(r.texto, pmids);
+      if (revisado.ajenos.length > 0) {
+        console.warn(JSON.stringify({ evento: 'chat_cita_ajena', pmids: revisado.ajenos }));
+      }
+      await emitirYEnviar({ tipo: 'chat_texto', texto_parcial: revisado.texto });
+      await emitirYEnviar({ tipo: 'chat_paso', paso: 'respuesta', estado: 'completada', cifra: revisado.citados.length });
+
+      const costo: Costo = { ts: Date.now(), modelo: r.modelo, entrada: r.entrada, salida: r.salida, usd: r.usd };
+      const costos = (await this.ctx.storage.get<Costo[]>('costos')) ?? [];
+      await this.ctx.storage.put({
+        costos: [...costos, costo].slice(-500),
+        ultimo_chat: { fecha: hoy, modelo: r.modelo, resultados: total, fuentes, texto: revisado.texto },
+      });
+      console.log(JSON.stringify({ evento: 'costo_claude', demo: 'chat', ...costo, ms: Date.now() - inicio }));
+      enviar({ t: 'fin', texto: revisado.texto, fuentes, resultados: total, citados: revisado.citados });
+    } catch (error) {
+      const razon = control.signal.aborted ? control.signal.reason : null;
+      if (razon === 'reinicio') return;
+      const detalle = error instanceof Error ? error.message : 'error';
+      const motivo =
+        razon === 'respaldo'
+          ? 'El presentador pidió la respuesta del ensayo.'
+          : razon === 'plazo'
+            ? 'La búsqueda y la respuesta tardaron más de 30 segundos.'
+            : etapa === 'pubmed'
+              ? `PubMed no respondió (${detalle}).`
+              : `Claude no respondió: ${describirError(error)}.`;
+      console.error(
+        JSON.stringify({ evento: 'chat_fallo', etapa, motivo: etapa === 'pubmed' ? detalle : describirError(error), ...detalleError(error), razon, ms: Date.now() - inicio }),
+      );
+      await this.respaldoChat(enviar, motivo);
+    } finally {
+      clearTimeout(plazo);
+    }
+  }
+
+  private async respaldoChat(enviar: Enviar, motivo: string): Promise<void> {
+    const r = (await cargarRespaldos(this.env)).chat;
+    if (!r) {
+      await this.emitir({ tipo: 'chat_paso', paso: 'respuesta', estado: 'falló' });
+      enviar({ t: 'error', mensaje: `${motivo} No hay respuesta de ensayo grabada.` });
+      return;
+    }
+    await this.difundirRespaldoChat();
+    enviar({ t: 'respaldo', motivo, fecha: r.fecha, texto: r.texto, fuentes: r.fuentes, resultados: r.resultados });
+  }
+
+  /** Los mismos pasos que en vivo, con lo grabado en el ensayo y marcados como tales. */
+  private async difundirRespaldoChat(): Promise<void> {
+    const r = (await cargarRespaldos(this.env)).chat;
+    if (!r) return;
+    await this.emitir({ tipo: 'chat_paso', paso: 'busqueda', estado: 'completada', cifra: r.resultados, ensayo: true });
+    await this.emitir({ tipo: 'chat_paso', paso: 'lectura', estado: 'completada', cifra: r.fuentes.length, ensayo: true });
+    await this.emitir({ tipo: 'chat_fuentes', fuentes: r.fuentes, ensayo: true });
+    await this.emitir({ tipo: 'chat_texto', texto_parcial: r.texto, ensayo: true });
+    const citados = revisarCitas(r.texto, r.fuentes.map((f) => f.pmid)).citados.length;
+    await this.emitir({ tipo: 'chat_paso', paso: 'respuesta', estado: 'completada', cifra: citados, ensayo: true });
+  }
+
+  // ---------------------------------------------------------- demo 3: Evidentia
 
   private async lanzarEvidentia(): Promise<Response> {
     const base = this.env.EVIDENTIA_URL ?? CONFIG.evidentiaUrl;

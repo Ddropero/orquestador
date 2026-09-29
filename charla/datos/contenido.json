@@ -58,6 +58,13 @@
     "referencia": 1,
     "instruccion": "Resuma en cuatro o cinco líneas los métodos y los resultados principales de este artículo. Responda en español y trate de usted al lector."
   },
+  "chat": {
+    "_nota": "Demostración 2 de 3: el mismo tipo de chat, pero con PubMed. El sistema busca con la consulta fija y Claude solo recibe los resúmenes que devolvió PubMed; debe citar cada afirmación con su PMID. El público nunca cambia ni la pregunta ni la consulta. La consulta devolvió 3 revisiones reales el 29 de septiembre de 2026 (PMID 24811411, 17163267 y 25640810).",
+    "pregunta": "¿El oseltamivir acorta los síntomas de la gripa en adultos sanos?",
+    "consulta": "oseltamivir[ti] AND influenza[ti] AND adults[ti] AND (systematic review[pt] OR meta-analysis[pt])",
+    "articulos": 3,
+    "instruccion": "Responda la pregunta usando SOLO los resúmenes de PubMed que van abajo; no use nada que no esté en ellos. Escriba en español, trate de usted al lector y use un solo párrafo de no más de 90 palabras. Después de cada afirmación ponga entre corchetes el PMID del resumen que la respalda, así: [PMID 12345678]. No cite ningún otro artículo. Si los resúmenes no alcanzan para responder, dígalo."
+  },
   "evidentia": {
     "pregunta": "¿Miel o sulfadiazina de plata para quemaduras de espesor parcial superficial?"
   },
@@ -65,6 +72,7 @@
     "Del caso clínico al PubMed",
     "¿Cuáles de estas cinco existen?",
     "Demostración: referencias sobre la gripa en adultos",
+    "El mismo chat, con PubMed",
     "Si no la abrió, no la cite.",
     "La misma duda, bien hecha",
     "En la entrevista de residencia le van a preguntar por su artículo.",
@@ -82,11 +90,11 @@
     "Llévese el kit"
   ],
   "pasos": {
-    "_nota": "Los siete pasos para el mapa de /vivo. Etiqueta, título, «La IA propone», «Usted verifica» y herramientas son textuales de las diapositivas 9 a 15 (una prueba lo comprueba). El prompt de cada paso es el de kit.prompts. La línea dorada de cada diapositiva no se copia: la del paso 02 tiene una cifra sin fuente pendiente de decisión del ponente.",
+    "_nota": "Los siete pasos para el mapa de /vivo. Etiqueta, título, «La IA propone», «Usted verifica» y herramientas son textuales de las diapositivas 10 a 16 (una prueba lo comprueba). El prompt de cada paso es el de kit.prompts. La línea dorada de cada diapositiva no se copia: la del paso 02 tiene una cifra sin fuente pendiente de decisión del ponente.",
     "lista": [
       {
         "paso": 1,
-        "diapositiva": 9,
+        "diapositiva": 10,
         "etiqueta": "Pregunta",
         "titulo": "De la duda a una pregunta PICO",
         "propone": "Convierte su duda clínica en formato PICO y sugiere palabras clave y términos MeSH.",
@@ -99,7 +107,7 @@
       },
       {
         "paso": 2,
-        "diapositiva": 10,
+        "diapositiva": 11,
         "etiqueta": "Búsqueda",
         "titulo": "Buscar sin inventar referencias",
         "propone": "Arma la estrategia booleana, encuentra artículos relacionados y muestra si otros autores apoyan o contradicen cada hallazgo.",
@@ -114,7 +122,7 @@
       },
       {
         "paso": 3,
-        "diapositiva": 11,
+        "diapositiva": 12,
         "etiqueta": "Lectura",
         "titulo": "Leer con la fuente al lado",
         "propone": "Resume y compara sus PDF, y cada respuesta señala el fragmento del artículo de donde sale.",
@@ -126,7 +134,7 @@
       },
       {
         "paso": 4,
-        "diapositiva": 12,
+        "diapositiva": 13,
         "etiqueta": "Datos",
         "titulo": "Analizar datos sin ser estadístico",
         "propone": "Sugiere la prueba adecuada, escribe el código del análisis y lo ejecuta sobre su base.",
@@ -140,7 +148,7 @@
       },
       {
         "paso": 5,
-        "diapositiva": 13,
+        "diapositiva": 14,
         "etiqueta": "Escritura",
         "titulo": "Escribir primero, pulir después",
         "propone": "Revisa su borrador contra la guía que corresponde, señala los vacíos y mejora el inglés.",
@@ -154,7 +162,7 @@
       },
       {
         "paso": 6,
-        "diapositiva": 14,
+        "diapositiva": 15,
         "etiqueta": "Revista",
         "titulo": "Elegir revista sin caer en trampas",
         "propone": "Compara el alcance, los requisitos y el costo de publicación de varias revistas candidatas.",
@@ -168,7 +176,7 @@
       },
       {
         "paso": 7,
-        "diapositiva": 15,
+        "diapositiva": 16,
         "etiqueta": "Revisores",
         "titulo": "Responder a los revisores",
         "propone": "Ordena los comentarios en una tabla punto por punto y propone borradores de respuesta.",
@@ -181,7 +189,7 @@
     ]
   },
   "kit": {
-    "_nota": "Lo que /vivo ofrece para llevar. Las líneas rojas son las de la diapositiva 16, textuales. Los prompts salen de lo que dice cada diapositiva del paso 01 al 07; el ponente los revisa antes de congelar.",
+    "_nota": "Lo que /vivo ofrece para llevar. Las líneas rojas son las de la diapositiva 17, textuales. Los prompts salen de lo que dice cada diapositiva del paso 01 al 07; el ponente los revisa antes de congelar.",
     "lineasRojas": [
       {
         "titulo": "La IA no es autora",

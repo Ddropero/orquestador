@@ -1,6 +1,7 @@
 /**
  * Simuladores de los tres servicios externos, para las pruebas de extremo a extremo:
- *   - NCBI E-utilities (esearch/esummary) con las respuestas grabadas en test/fixtures/ncbi.json
+ *   - NCBI E-utilities (esearch/esummary) con las respuestas grabadas en test/fixtures/ncbi.json,
+ *     y efetch con el XML real de los tres artículos del chat (test/fixtures/efetch-chat.xml)
  *   - La API de Anthropic (POST /v1/messages en streaming SSE)
  *   - Evidentia (GET /health, POST /runs, GET /runs/:id)
  *
@@ -19,8 +20,14 @@ export const TEXTO_CLAUDE_SIMULADO =
   'oseltamivir temprano o placebo y midió los días hasta volver al trabajo. Los autores informan una ' +
   'reducción de 1,4 días en el grupo tratado, con más náuseas. Usted debería comprobar este artículo antes de citarlo.';
 
+/** La respuesta simulada del chat: dos citas a artículos leídos y una a un PMID que no salió de la búsqueda. */
+export const TEXTO_CHAT_SIMULADO =
+  'Respuesta simulada del chat. En adultos, el oseltamivir acortó el alivio de los síntomas unas 17 horas [PMID 24811411] ' +
+  'y en otro metaanálisis alrededor de un día [PMID 25640810]. Esta cita no salió de la búsqueda [PMID 99999999].';
+
 export async function iniciarSimuladores() {
   const fixtures = JSON.parse(await readFile(path.join(RAIZ, 'test/fixtures/ncbi.json'), 'utf8'));
+  const xmlChat = await readFile(path.join(RAIZ, 'test/fixtures/efetch-chat.xml'), 'utf8');
   const modo = { ncbi: 'ok', claude: 'ok', evidentia: 'ok' };
   const registro = { ncbi: [], claude: [], evidentia: [] };
   const runs = new Map();
@@ -49,7 +56,15 @@ export async function iniciarSimuladores() {
 
     // ---------------- NCBI
     if (ruta.startsWith('/entrez/eutils/')) {
-      registro.ncbi.push({ ruta, term: url.searchParams.get('term'), tool: url.searchParams.get('tool'), email: url.searchParams.get('email') });
+      registro.ncbi.push({
+        ruta,
+        term: url.searchParams.get('term'),
+        tool: url.searchParams.get('tool'),
+        email: url.searchParams.get('email'),
+        sort: url.searchParams.get('sort'),
+        retmax: url.searchParams.get('retmax'),
+        id: url.searchParams.get('id'),
+      });
       if (modo.ncbi === 'caido') {
         res.writeHead(503);
         return res.end('caído');
@@ -81,6 +96,10 @@ export async function iniciarSimuladores() {
           };
         }
         return json(res, { result });
+      }
+      if (ruta.endsWith('efetch.fcgi')) {
+        res.writeHead(200, { 'content-type': 'text/xml' });
+        return res.end(xmlChat);
       }
     }
 
@@ -116,7 +135,8 @@ export async function iniciarSimuladores() {
         },
       });
       ev('content_block_start', { index: 0, content_block: { type: 'text', text: '' } });
-      const trozos = TEXTO_CLAUDE_SIMULADO.match(/.{1,40}/g) ?? [];
+      const esChat = String(cuerpo.messages?.[0]?.content ?? '').includes('Resúmenes de PubMed');
+      const trozos = (esChat ? TEXTO_CHAT_SIMULADO : TEXTO_CLAUDE_SIMULADO).match(/.{1,40}/g) ?? [];
       let k = 0;
       const enviar = () => {
         if (k < trozos.length) {
