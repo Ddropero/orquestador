@@ -921,7 +921,8 @@ try {
     await diapositiva(9);
     const resaltado = await tel.waitForSelector('#pasos.resaltado', { timeout: 5000 }).catch(() => null);
     comprobar(resaltado !== null && (await tel.getAttribute('#diapo-paso-enlace', 'href')) === '#pasos', 'en la diapositiva 9 se resalta el mapa y el atajo lleva a él');
-    comprobar(!(await oculto(tel, '#pasos')) && !(await oculto(tel, '#kit-prompts')), 'y desde ahí se ven el mapa y su atajo en el kit');
+    const diag = await tel.evaluate(() => ({ n: document.getElementById('diapo-n')?.textContent, pasos: document.getElementById('pasos').hidden, kit: document.getElementById('kit-prompts').hidden, resaltado: document.getElementById('pasos').classList.contains('resaltado') }));
+    comprobar(!(await oculto(tel, '#pasos')) && !(await oculto(tel, '#kit-prompts')), `y desde ahí se ven el mapa y su atajo en el kit ${JSON.stringify(diag)}`);
     await diapositiva(10);
     const actual = await tel.waitForSelector('#paso-1.actual', { timeout: 5000 }).catch(() => null);
     const paso1 = await tel.$eval('#paso-1', (d) => ({ abierto: d.open, marca: d.querySelector('.paso-marca')?.textContent }));

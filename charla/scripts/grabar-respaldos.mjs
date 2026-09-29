@@ -29,6 +29,13 @@ if (!base || !token) {
   process.exit(2);
 }
 
+/** «fetch failed» no dice nada: la causa real (DNS, TLS, conexión cortada) viene en `cause`. */
+function motivo(e) {
+  const c = e?.cause;
+  const detalle = c ? [c.code, c.message].filter(Boolean).join(': ') : '';
+  return detalle ? `${e.message} (${detalle})` : e.message;
+}
+
 const cabeceras = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
 
 async function ndjson(ruta) {
@@ -73,7 +80,7 @@ try {
   nuevo.claude = { texto: fin.texto, fecha: hoy, modelo: estado.configuracion?.modelo ?? 'claude' };
   console.log(`Claude: grabado (${fin.texto.length} caracteres).`);
 } catch (e) {
-  problemas.push(`Claude no se grabó: ${e.message}. Se conserva el respaldo anterior.`);
+  problemas.push(`Claude no se grabó: ${motivo(e)}. Se conserva el respaldo anterior.`);
 }
 
 // ---- PubMed
@@ -100,7 +107,7 @@ try {
   nuevo.pubmed = { fecha: hoy, origen: `Ensayo general del ${hoy} contra PubMed en vivo.`, referencias };
   console.log(`PubMed: grabado (${referencias.map((r) => `${r.ref}:${r.existe ? 'sí' : 'no'}`).join(' ')}).`);
 } catch (e) {
-  problemas.push(`PubMed no se grabó: ${e.message}. Se conserva el respaldo anterior.`);
+  problemas.push(`PubMed no se grabó: ${motivo(e)}. Se conserva el respaldo anterior.`);
 }
 
 // ---- Chat con PubMed
@@ -123,7 +130,7 @@ try {
     problemas.push('El chat se grabó con una cita retirada (un PMID que no salió de la búsqueda). Revise el texto en datos/respaldos.json o vuelva a grabar.');
   }
 } catch (e) {
-  problemas.push(`El chat no se grabó: ${e.message}. Se conserva el respaldo anterior.`);
+  problemas.push(`El chat no se grabó: ${motivo(e)}. Se conserva el respaldo anterior.`);
 }
 
 // ---- Evidentia
@@ -140,7 +147,7 @@ try {
     problemas.push('Evidentia se grabó sin las cifras del embudo: si falla en vivo, /vivo no tendrá embudo del ensayo. Lance la pregunta otra vez, espere a que termine y vuelva a grabar.');
   }
 } catch (e) {
-  problemas.push(`Evidentia no se grabó: ${e.message}. Se conserva el respaldo anterior.`);
+  problemas.push(`Evidentia no se grabó: ${motivo(e)}. Se conserva el respaldo anterior.`);
 }
 
 await writeFile(ARCHIVO, JSON.stringify(nuevo, null, 2) + '\n');
