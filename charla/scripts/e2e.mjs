@@ -842,6 +842,12 @@ try {
     // De vuelta a la lista de cinco: el resto de la prueba usa sus botones.
     await pres.keyboard.press('ArrowLeft');
     await pres.waitForSelector('#demo.active');
+    // La página publica la diapositiva con 300 ms de retraso. Hay que esperar a que la
+    // sala la tenga: si no, en cuanto se abre el celular Chromium frena los temporizadores
+    // de esta pestaña, que queda en segundo plano, y el «3» llega tarde, cuando la prueba
+    // del mapa ya publicó la 9.
+    const volvio = await esperar(async () => ((await vivo.innerText('#diapo-n')) === '3' ? true : null), 5000);
+    comprobar(volvio === true, 'al volver a la lista de cinco, el público ve la diapositiva 3');
     await pres.keyboard.press('c');
     await pres.waitForSelector('#controles:not([hidden])');
     const estado = await esperar(async () => ((await pres.innerText('#c-estado')).includes('Clave de Anthropic: configurada') ? true : null), 10_000);
