@@ -200,3 +200,36 @@ describe('confirmar que un resultado es el artículo citado', () => {
     expect(normalizarTitulo('Síntesis: “ÁCIDO” — prueba')).toBe('sintesis acido prueba');
   });
 });
+
+describe('clave de NCBI rechazada', () => {
+  function ncbiQueRechazaLaClave() {
+    const pedidas: URL[] = [];
+    const fetchImpl = (async (entrada: string) => {
+      const u = new URL(entrada);
+      pedidas.push(u);
+      if (u.searchParams.has('api_key')) {
+        return Response.json({ error: 'API key invalid', 'api-key': u.searchParams.get('api_key'), type: 'invalid' }, { status: 400 });
+      }
+      return Response.json({ esearchresult: { count: '1', idlist: ['123'] } });
+    }) as unknown as typeof fetch;
+    return { pedidas, fetchImpl };
+  }
+
+  it('si NCBI rechaza la clave, repite sin ella y sigue sin ella', async () => {
+    const { pedidas, fetchImpl } = ncbiQueRechazaLaClave();
+    const c = cliente(fetchImpl, { apiKey: 'clave-mal-copiada' });
+    expect(await c.buscar('influenza')).toEqual({ total: 1, ids: ['123'] });
+    expect(await c.buscar('oseltamivir')).toEqual({ total: 1, ids: ['123'] });
+    expect(pedidas.map((u) => u.searchParams.has('api_key'))).toEqual([true, false, false]);
+  });
+
+  it('otro 400 sigue siendo un error, con el motivo de NCBI y sin la clave', async () => {
+    const fetchImpl = (async () =>
+      Response.json({ error: 'Invalid query syntax', 'api-key': 'secreta' }, { status: 400 })) as unknown as typeof fetch;
+    const c = cliente(fetchImpl, { apiKey: 'secreta' });
+    const error = await c.buscar('x').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ErrorNcbi);
+    expect((error as Error).message).toBe('NCBI respondió HTTP 400: Invalid query syntax');
+    expect((error as Error).message).not.toContain('secreta');
+  });
+});

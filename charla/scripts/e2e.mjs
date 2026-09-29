@@ -842,6 +842,12 @@ try {
     // De vuelta a la lista de cinco: el resto de la prueba usa sus botones.
     await pres.keyboard.press('ArrowLeft');
     await pres.waitForSelector('#demo.active');
+    // La página publica la diapositiva con 300 ms de retraso. Hay que esperar a que la
+    // sala la tenga: si no, en cuanto se abre el celular Chromium frena los temporizadores
+    // de esta pestaña, que queda en segundo plano, y el «3» llega tarde, cuando la prueba
+    // del mapa ya publicó la 9.
+    const volvio = await esperar(async () => ((await vivo.innerText('#diapo-n')) === '3' ? true : null), 5000);
+    comprobar(volvio === true, 'al volver a la lista de cinco, el público ve la diapositiva 3');
     await pres.keyboard.press('c');
     await pres.waitForSelector('#controles:not([hidden])');
     const estado = await esperar(async () => ((await pres.innerText('#c-estado')).includes('Clave de Anthropic: configurada') ? true : null), 10_000);
@@ -921,7 +927,8 @@ try {
     await diapositiva(9);
     const resaltado = await tel.waitForSelector('#pasos.resaltado', { timeout: 5000 }).catch(() => null);
     comprobar(resaltado !== null && (await tel.getAttribute('#diapo-paso-enlace', 'href')) === '#pasos', 'en la diapositiva 9 se resalta el mapa y el atajo lleva a él');
-    comprobar(!(await oculto(tel, '#pasos')) && !(await oculto(tel, '#kit-prompts')), 'y desde ahí se ven el mapa y su atajo en el kit');
+    const diag = await tel.evaluate(() => ({ n: document.getElementById('diapo-n')?.textContent, pasos: document.getElementById('pasos').hidden, kit: document.getElementById('kit-prompts').hidden, resaltado: document.getElementById('pasos').classList.contains('resaltado') }));
+    comprobar(!(await oculto(tel, '#pasos')) && !(await oculto(tel, '#kit-prompts')), `y desde ahí se ven el mapa y su atajo en el kit ${JSON.stringify(diag)}`);
     await diapositiva(10);
     const actual = await tel.waitForSelector('#paso-1.actual', { timeout: 5000 }).catch(() => null);
     const paso1 = await tel.$eval('#paso-1', (d) => ({ abierto: d.open, marca: d.querySelector('.paso-marca')?.textContent }));

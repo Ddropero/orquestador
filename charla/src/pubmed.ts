@@ -72,8 +72,13 @@ export function crearClienteNcbi(o: OpcionesNcbi): ClienteNcbi {
   const dormir = o.dormir ?? dormirReal;
   const ahora = o.ahora ?? Date.now;
   const timeoutMs = o.timeoutMs ?? 5000;
+  // Si NCBI rechaza la clave (HTTP 400 «API key invalid»), se sigue sin ella: sin
+  // clave funciona igual, con menos peticiones por segundo. Una clave mal copiada en
+  // los secretos del Worker no puede tumbar la demo.
+  let claveRechazada = false;
+  const conClave = () => Boolean(o.apiKey) && !claveRechazada;
   // NCBI permite 3 peticiones/s sin clave y 10 con clave. Se queda un poco por debajo.
-  const intervalo = o.apiKey ? 110 : 350;
+  const intervalo = () => (conClave() ? 110 : 350);
   let ultima = 0;
 
   async function pedir(ruta: 'esearch.fcgi' | 'esummary.fcgi', params: Record<string, string>): Promise<unknown> {
@@ -97,11 +102,11 @@ export function crearClienteNcbi(o: OpcionesNcbi): ClienteNcbi {
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
     url.searchParams.set('tool', o.tool);
     url.searchParams.set('email', o.email);
-    if (o.apiKey) url.searchParams.set('api_key', o.apiKey);
+    if (conClave()) url.searchParams.set('api_key', o.apiKey!);
 
     for (let intento = 0; intento < 2; intento++) {
       if (o.signal?.aborted) throw new ErrorNcbi('cancelada');
-      const espera = ultima + intervalo - ahora();
+      const espera = ultima + intervalo() - ahora();
       if (espera > 0) await dormir(espera);
       ultima = ahora();
 
@@ -121,7 +126,15 @@ export function crearClienteNcbi(o: OpcionesNcbi): ClienteNcbi {
         await dormir(600);
         continue;
       }
-      if (!res.ok) throw new ErrorNcbi(`NCBI respondió HTTP ${res.status}`);
+      if (!res.ok) {
+        const motivo = await motivoDeError(res);
+        if (res.status === 400 && conClave() && /api.?key/i.test(motivo)) {
+          claveRechazada = true;
+          console.warn(JSON.stringify({ evento: 'ncbi_clave_rechazada', motivo }));
+          return pedirCrudo(ruta, params, acepta, leerRespuesta);
+        }
+        throw new ErrorNcbi(`NCBI respondió HTTP ${res.status}${motivo ? `: ${motivo}` : ''}`);
+      }
       return leerRespuesta(res);
     }
     throw new ErrorNcbi('NCBI no respondió tras el reintento');
@@ -191,6 +204,20 @@ export function crearClienteNcbi(o: OpcionesNcbi): ClienteNcbi {
       return ids.map((id) => porPmid.get(id)).filter((a): a is ArticuloLeido => Boolean(a));
     },
   };
+}
+
+/**
+ * El porqué de un error de NCBI, en pocas palabras. Solo el campo `error` de su JSON
+ * («API key invalid»): el resto de la respuesta repite la clave, y el motivo llega
+ * al registro y al panel del presentador.
+ */
+async function motivoDeError(res: Response): Promise<string> {
+  try {
+    const cuerpo = (await res.json()) as { error?: unknown };
+    return typeof cuerpo?.error === 'string' ? cuerpo.error.replace(/[^\p{L}\p{N} .,:;()'-]/gu, '').slice(0, 80) : '';
+  } catch {
+    return '';
+  }
 }
 
 const ENTIDADES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
