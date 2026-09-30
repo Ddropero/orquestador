@@ -7,7 +7,7 @@ Un solo Worker de Cloudflare sirve tres cosas:
 
 | Ruta | Quién | Qué |
 |---|---|---|
-| `/presentador` | El ponente, con token | Las 19 diapositivas, los botones de las demos y un panel de controles. |
+| `/presentador` | El ponente, con token | Las 18 diapositivas, los botones de las demos y un panel de controles. |
 | `/vivo` | El público, desde el QR | Solo lectura: la diapositiva actual, lo que hace la IA paso a paso y el kit para llevar. |
 | `/api/...` | Ver `src/index.ts` | Las demos (Claude, PubMed, el chat con PubMed, Evidentia) y la sala. Todo lo que cuesta dinero exige el token. |
 

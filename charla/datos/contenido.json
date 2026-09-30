@@ -82,15 +82,14 @@
     "Buscar sin inventar referencias",
     "Leer con la fuente al lado",
     "Analizar datos sin ser estadístico",
-    "Escribir primero, pulir después",
-    "Elegir revista sin caer en trampas",
-    "Responder a los revisores",
+    "Escribir, publicar y responder",
     "Cuatro líneas rojas",
     "La IA acelera.",
+    "Esta semana",
     "Llévese el kit"
   ],
   "pasos": {
-    "_nota": "Los siete pasos para el mapa de /vivo. Etiqueta, título, «La IA propone», «Usted verifica» y herramientas son textuales de las diapositivas 10 a 16 (una prueba lo comprueba). El prompt de cada paso es el de kit.prompts. La línea dorada de cada diapositiva no se copia: la del paso 02 tiene una cifra sin fuente pendiente de decisión del ponente.",
+    "_nota": "Los siete pasos para el mapa de /vivo. Etiqueta, título, «La IA propone», «Usted verifica» y herramientas son textuales de las diapositivas 10 a 14 (una prueba lo comprueba). El prompt de cada paso es el de kit.prompts. La línea dorada de cada diapositiva no se copia: la del paso 02 tiene una cifra sin fuente pendiente de decisión del ponente.",
     "lista": [
       {
         "paso": 1,
@@ -162,7 +161,7 @@
       },
       {
         "paso": 6,
-        "diapositiva": 15,
+        "diapositiva": 14,
         "etiqueta": "Revista",
         "titulo": "Elegir revista sin caer en trampas",
         "propone": "Compara el alcance, los requisitos y el costo de publicación de varias revistas candidatas.",
@@ -176,7 +175,7 @@
       },
       {
         "paso": 7,
-        "diapositiva": 16,
+        "diapositiva": 14,
         "etiqueta": "Revisores",
         "titulo": "Responder a los revisores",
         "propone": "Ordena los comentarios en una tabla punto por punto y propone borradores de respuesta.",
@@ -189,7 +188,7 @@
     ]
   },
   "kit": {
-    "_nota": "Lo que /vivo ofrece para llevar. Las líneas rojas son las de la diapositiva 17, textuales. Los prompts salen de lo que dice cada diapositiva del paso 01 al 07; el ponente los revisa antes de congelar.",
+    "_nota": "Lo que /vivo ofrece para llevar. Las líneas rojas son las de la diapositiva 15, textuales. Los prompts salen de lo que dice cada diapositiva del paso 01 al 07; el ponente los revisa antes de congelar.",
     "lineasRojas": [
       {
         "titulo": "La IA no es autora",

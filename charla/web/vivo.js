@@ -65,6 +65,8 @@
   function cifra(x){ return typeof x === "number" && isFinite(x) && x >= 0 ? x : null; }
   function plural(n, uno, varios){ return n + " " + (n === 1 ? uno : varios); }
   function numeroPaso(p){ return (p.paso < 10 ? "0" : "") + p.paso; }
+  var NOMBRE_VIA = { titulo: "título", doi: "DOI", autor: "autor" };
+  function nombreVia(via){ return NOMBRE_VIA[via] || via; }
 
   var MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
   function fechaLarga(iso){
@@ -240,6 +242,7 @@
   function pintar(){
     var est = estadoVerificacion();
     pintarDiapositiva();
+    pintarAhora(est);
     pintarVotacion(est);
     pintarResumen(est);
     pintarReferencias(est);
@@ -253,6 +256,9 @@
   function pasoDeDiapositiva(n){
     for (var k = 0; k < PASOS.length; k++) if (PASOS[k].diapositiva === n) return PASOS[k];
     return null;
+  }
+  function pasosDeDiapositiva(n){
+    return PASOS.filter(function(p){ return p.diapositiva === n; });
   }
 
   function pintarDiapositiva(){
@@ -275,7 +281,69 @@
     caja.hidden = !destino;
     if (!destino) return;
     if (enlace.getAttribute("href") !== destino) enlace.setAttribute("href", destino);
-    texto(enlace, paso ? "Ver el paso " + numeroPaso(paso) + " en el mapa y copiar su prompt" : "Ver el mapa de los siete pasos");
+    var enPantalla = pasosDeDiapositiva(d.n);
+    var cuales = enPantalla.length > 1
+      ? "los pasos " + numeroPaso(enPantalla[0]) + " a " + numeroPaso(enPantalla[enPantalla.length - 1]) + " en el mapa y copiar sus prompts"
+      : paso ? "el paso " + numeroPaso(paso) + " en el mapa y copiar su prompt" : "el mapa de los siete pasos";
+    texto(enlace, "Ver " + cuales);
+  }
+
+  /* ---------- «Ahora»: qué pasa en la tarima ---------- */
+
+  var TIPOS_AHORA = {
+    diapositiva: true, demo_inicio: true, claude_texto: true, pubmed_buscando: true, pubmed_consulta: true,
+    pubmed_veredicto: true, evidentia_etapa: true, evidentia_embudo: true, chat_paso: true, chat_fuentes: true, chat_texto: true
+  };
+
+  /** Una línea sobre lo que ocurre en la tarima, o null si no hay nada en marcha. */
+  function textoAhora(est){
+    var v = ultimo("votacion");
+    if (v && v.estado === "abierta") return { texto: "Votación abierta: vote en cada referencia.", voto: true };
+    var e = null;
+    for (var k = eventos.length - 1; k >= 0; k--) if (TIPOS_AHORA[eventos[k].tipo]) { e = eventos[k]; break; }
+    if (!e) return null;
+    var ensayo = e.ensayo ? " (respuesta del ensayo)" : "";
+    switch (e.tipo) {
+      case "diapositiva":
+        return null;
+      case "demo_inicio":
+        if (e.tema === "resumen") return { texto: "El modelo responde sin buscar. Mire la pantalla." };
+        if (e.tema === "verificacion") return { texto: "PubMed empieza a verificar las cinco." };
+        if (e.tema === "chat") return { texto: "El mismo chat, ahora con PubMed: buscando." };
+        if (e.tema === "evidentia") return { texto: "Evidentia empieza a trabajar la pregunta." };
+        return null;
+      case "claude_texto":
+        return { texto: "El modelo responde sin buscar" + ensayo + ". Mire la pantalla." };
+      case "pubmed_buscando":
+      case "pubmed_consulta":
+        return { texto: "PubMed verifica la referencia " + e.ref + (e.via ? " por " + nombreVia(e.via) : "") + ensayo + "." };
+      case "pubmed_veredicto": {
+        var faltan = 0;
+        Object.keys(REFS).forEach(function(n){ if (!est.veredictos[n]) faltan++; });
+        if (faltan === 0) return { texto: "PubMed ya verificó las cinco. Compare con su voto." };
+        return { texto: "PubMed: la referencia " + e.ref + (e.existe ? " existe" : " no existe") + ensayo + ". Faltan " + faltan + "." };
+      }
+      case "chat_paso":
+        return { texto: "Chat con PubMed · " + textoPasoChat(e) + (e.estado === "en curso" ? "…" : " · " + e.estado) + ensayo };
+      case "chat_fuentes":
+        return { texto: "El modelo ya tiene los resúmenes de PubMed y va a responder" + ensayo + "." };
+      case "chat_texto":
+        return { texto: "El modelo responde solo con los resúmenes de PubMed" + ensayo + "." };
+      case "evidentia_etapa":
+        return { texto: "Evidentia · " + e.etapa + (e.estado === "en curso" ? "…" : " · " + e.estado) };
+      case "evidentia_embudo":
+        return { texto: "Evidentia terminó: el embudo en cifras está más abajo" + ensayo + "." };
+    }
+    return null;
+  }
+
+  function pintarAhora(est){
+    var a = textoAhora(est);
+    var nodo = $("ahora");
+    nodo.hidden = !a;
+    if (!a) return;
+    texto(nodo, a.texto);
+    marcar(nodo, "ahora-voto", !!a.voto);
   }
 
   /* ---------- votación ---------- */
@@ -417,7 +485,32 @@
     texto($("votacion-participacion"), total === 0
       ? "Participación: todavía no hay votos."
       : "Participación: " + plural(total, "voto", "votos") + " en total.");
+    pintarAcierto(abierta, mios, est);
     texto($("votacion-mensaje"), voto.mensaje);
+  }
+
+  /** Cerrada la votación y con los cinco veredictos: «Usted acertó 3 de 5». */
+  function pintarAcierto(abierta, mios, est){
+    var nodo = $("votacion-acierto");
+    var votadas = 0, aciertos = 0, verificadas = 0;
+    Object.keys(REFS).forEach(function(n){
+      if (est.veredictos[n]) verificadas++;
+      if (mios[n] === undefined) return;
+      votadas++;
+      if (est.veredictos[n] && est.veredictos[n].existe === mios[n]) aciertos++;
+    });
+    var total = Object.keys(REFS).length;
+    var mostrar = !abierta && votadas > 0;
+    nodo.hidden = !mostrar;
+    if (!mostrar) return;
+    if (verificadas < total) {
+      texto(nodo, "PubMed sigue verificando: su acierto aparece aquí al final.");
+      return;
+    }
+    var t = "Usted acertó " + aciertos + " de " + votadas + ".";
+    if (votadas < total) t += " Votó " + votadas + " de las " + total + ".";
+    else if (aciertos === total) t += " Las cinco.";
+    texto(nodo, t);
   }
 
   function votar(n, existe){
@@ -1045,8 +1138,43 @@
     });
   }
 
+  /** El kit en texto plano, para el correo o el portapapeles: nada que no esté ya en esta página. */
+  function textoKit(){
+    var k = DATOS.kit || {};
+    var lineas = ["Del caso clínico al PubMed · kit para llevar", "La IA propone, usted verifica.", ""];
+    lineas.push("PROMPTS PARA CADA PASO");
+    PASOS.forEach(function(p){
+      lineas.push("");
+      lineas.push("Paso " + numeroPaso(p) + " · " + p.etiqueta + ": " + p.titulo);
+      lineas.push(p.prompt);
+    });
+    lineas.push("");
+    lineas.push("CUATRO LÍNEAS ROJAS");
+    (k.lineasRojas || []).forEach(function(l){ lineas.push("- " + l.titulo + ". " + l.texto); });
+    lineas.push("");
+    lineas.push("GUÍAS DE REPORTE");
+    (k.guias || []).forEach(function(g){ lineas.push("- " + g.nombre + ": " + g.url); });
+    lineas.push("");
+    lineas.push("Esta página: " + location.origin + "/vivo");
+    return lineas.join("\n");
+  }
+
   function pintarKit(){
     var k = DATOS.kit || {};
+    var enviar = $("kit-enviar");
+    var copiar = $("kit-copiar");
+    var aviso = $("kit-copiado");
+    if (enviar && copiar && aviso) {
+      var cuerpo = textoKit();
+      enviar.href = "mailto:?subject=" + encodeURIComponent("Kit: del caso clínico al PubMed") + "&body=" + encodeURIComponent(cuerpo);
+      var temporizador = null;
+      var avisar = function(t){
+        aviso.textContent = t.replace("Prompt", "Kit");
+        clearTimeout(temporizador);
+        temporizador = setTimeout(function(){ aviso.textContent = ""; }, AVISO_COPIA_MS);
+      };
+      copiar.addEventListener("click", function(){ copiarPrompt(cuerpo, $("kit-prompts"), avisar); });
+    }
     var lr = $("lineas-rojas");
     (k.lineasRojas || []).forEach(function(l){
       var li = el("li");

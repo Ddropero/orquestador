@@ -100,6 +100,7 @@ const ESTILOS_CHARLA = `
   .qr-cierre b{ color:var(--ink); }
   @media (max-width: 900px){ .qr-portada{ position:static; } }
   .verdict .ensayo{ color:var(--gold); font-weight:600; }
+  .verdict .publico{ color:var(--ink); font-weight:600; }
   .bar .punto{ width:10px; height:10px; border-radius:50%; background:var(--soft); display:inline-block; }
   .bar .punto.ok{ background:#2F6B3A; }
   .bar .punto.error{ background:#C9A45C; }
@@ -166,6 +167,11 @@ export function estilosPlantilla(portada, contenido) {
   #demo .actions button{ padding:8px 16px; }
   #demo .out{ max-height:26vh; }
   .verdict{ font-size:clamp(12px,1.5vw,18px); }
+  /* Los pasos 05 a 07 van en tres columnas: la letra crece menos para que quepan. */
+  .tres-pasos .card p{ font-size:clamp(13px,1.5vw,22px); line-height:1.32; }
+  .tres-pasos .card h3{ font-size:clamp(15px,2vw,28px); }
+  .tres-pasos .card{ padding:clamp(10px,1.3vw,22px); gap:.3em; }
+  #pasos-finales{ gap:clamp(8px,1.3vh,18px); padding-bottom:calc(var(--alto) * .09); }
   button{ font-size:clamp(14px,1.7vw,20px); }
   .out{ font-size:clamp(14px,1.8vw,22px); }
   .out-label{ font-size:clamp(11px,1.5vw,17px); }
@@ -398,7 +404,7 @@ async function construirVivo({ contenido, respaldos }) {
         ? { n: ref.n, corta: ref.corta, fabricada: true, consultas }
         : { n: ref.n, cita: ref.cita, corta: ref.corta, fabricada: false, consultas };
     }),
-    // El mapa de los siete pasos: textos de las diapositivas 10 a 16 y el prompt de cada uno.
+    // El mapa de los siete pasos: textos de las diapositivas 10 a 14 y el prompt de cada uno.
     pasos: pasos.map((p, i) => ({
       paso: p.paso,
       diapositiva: p.diapositiva,
