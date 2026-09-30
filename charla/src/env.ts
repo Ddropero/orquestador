@@ -23,6 +23,12 @@ export interface Env {
 
   /** Secretos. */
   ANTHROPIC_API_KEY?: string;
+  /**
+   * Solo si la clave de Anthropic se creó a nivel de organización y no dentro de un
+   * espacio de trabajo: la API exige entonces la cabecera `anthropic-workspace-id`
+   * (sin ella responde 400). Con una clave creada dentro de un espacio no hace falta.
+   */
+  ANTHROPIC_WORKSPACE_ID?: string;
   PRESENTER_TOKEN?: string;
   NCBI_API_KEY?: string;
 

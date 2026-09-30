@@ -108,6 +108,7 @@ export async function iniciarSimuladores() {
       const cuerpo = JSON.parse((await leerCuerpo(req)) || '{}');
       registro.claude.push({
         apiKey: req.headers['x-api-key'],
+        workspace: req.headers['anthropic-workspace-id'] ?? null,
         model: cuerpo.model,
         stream: cuerpo.stream,
         tools: cuerpo.tools ?? null,

@@ -125,6 +125,7 @@ try {
       '--var', `PRESENTER_TOKEN:${TOKEN}`,
       '--var', 'ANTHROPIC_API_KEY:sk-ant-prueba',
       '--var', `ANTHROPIC_BASE_URL:${sim.base}`,
+      '--var', 'ANTHROPIC_WORKSPACE_ID:wrkspc_prueba',
       '--var', `NCBI_BASE_URL:${sim.base}/entrez/eutils`,
       '--var', `EVIDENTIA_URL:${sim.base}`,
     ],
@@ -237,6 +238,7 @@ try {
     const ll = reg.claude[0];
     comprobar(ll && ll.apiKey === 'sk-ant-prueba' && ll.model === 'claude-sonnet-5' && ll.stream === true, 'la llamada usa la clave del servidor y claude-sonnet-5 en streaming');
     comprobar(ll && ll.tools === null && ll.system === null, 'sin herramientas ni prompt de sistema');
+    comprobar(ll && ll.workspace === 'wrkspc_prueba', 'con la cabecera del espacio de trabajo cuando ANTHROPIC_WORKSPACE_ID está definido');
     comprobar(ll && String(ll.prompt).includes('Resuma') && String(ll.prompt).includes('Lindqvist HM'), 'el prompt es el fijo del servidor sobre la referencia 1');
     const est = await (await get('/api/sala/estado')).json();
     const ct = est.eventos.filter((e) => e.tipo === 'claude_texto');

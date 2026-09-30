@@ -14,6 +14,8 @@ export class ErrorResumen extends Error {
 export interface OpcionesResumen {
   apiKey: string;
   baseURL?: string;
+  /** Una clave creada a nivel de organización exige decir en qué espacio de trabajo se usa. */
+  workspaceId?: string;
   modelo: string;
   prompt: string;
   signal: AbortSignal;
@@ -39,6 +41,7 @@ export async function generarResumen(o: OpcionesResumen): Promise<ResultadoResum
   const cliente = new Anthropic({
     apiKey: o.apiKey,
     ...(o.baseURL ? { baseURL: o.baseURL } : {}),
+    ...(o.workspaceId ? { defaultHeaders: { 'anthropic-workspace-id': o.workspaceId } } : {}),
     // Un reintento cabe dentro de los 25 s; más, no. El plazo lo corta `signal`.
     maxRetries: 1,
     timeout: 25_000,

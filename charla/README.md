@@ -60,6 +60,7 @@ npx wrangler login
 npx wrangler secret put PRESENTER_TOKEN     # 5 o más letras y dígitos al azar (ver abajo)
 npx wrangler secret put ANTHROPIC_API_KEY
 npx wrangler secret put NCBI_API_KEY        # opcional: 10 peticiones/s en vez de 3
+npx wrangler secret put ANTHROPIC_WORKSPACE_ID  # solo si la clave de Anthropic se creó fuera de un espacio de trabajo (la API responde 400 sin esta cabecera)
 CHARLA_SIN_RESPALDOS=1 npm run deploy       # el primer despliegue, antes de grabar los respaldos
 node scripts/preflight.mjs https://charla.davidduque.com
 ```
