@@ -144,6 +144,33 @@ export function estilosPlantilla(portada, contenido) {
     --gold:#6E5A2F; --glow:#D9C9A8; --line:#E0CFE2; --surround:#2A2B2A; --alert:#A63D2A;
     --deep:#2A2B2A; --deep-ink:#F3ECDD; --deep-body:#CFC6B4;
   }
+  /* Letra más grande para el auditorio (un 20-25 % sobre la base). Los tamaños siguen
+     en proporción al ancho de la pantalla: en 1920×1080 el cuerpo pasa de 24 a 30 px. */
+  .eyebrow{ font-size:clamp(13px,1.7vw,19px); }
+  h1{ font-size:clamp(34px,7.2vw,92px); }
+  h2{ font-size:clamp(26px,4.9vw,62px); }
+  h3{ font-size:clamp(18px,2.7vw,34px); }
+  p,li{ font-size:clamp(16px,2.4vw,29px); line-height:1.38; }
+  .lead{ font-size:clamp(19px,3.2vw,38px); }
+  .card{ gap:.35em; padding:clamp(12px,1.6vw,24px); }
+  .stack{ gap:clamp(6px,1.1vh,14px); }
+  .slide{ gap:clamp(10px,1.8vh,24px); }
+  .pill,.tools span,.tools em{ font-size:clamp(13px,1.7vw,19px); }
+  .chain b{ font-size:clamp(13px,1.8vw,21px); }
+  /* La lista de cinco es densa: crece menos, y en la diapositiva 3 va apretada para que
+     quepan las cinco con los botones. Las citas se leen en el celular. */
+  .refs li{ font-size:clamp(13px,1.6vw,20px); }
+  #demo .refs li{ font-size:clamp(12px,1.4vw,18px); padding:clamp(7px,1vw,14px) clamp(10px,1.3vw,18px); line-height:1.3; }
+  #demo .refs{ gap:7px; }
+  #demo{ padding-top:calc(var(--alto) * .12); padding-bottom:calc(var(--alto) * .05); gap:clamp(8px,1.3vh,18px); }
+  #demo .actions button{ padding:8px 16px; }
+  #demo .out{ max-height:26vh; }
+  .verdict{ font-size:clamp(12px,1.5vw,18px); }
+  button{ font-size:clamp(14px,1.7vw,20px); }
+  .out{ font-size:clamp(14px,1.8vw,22px); }
+  .out-label{ font-size:clamp(11px,1.5vw,17px); }
+  #demo-status,#chat-status{ font-size:clamp(12px,1.6vw,18px) !important; }
+  .grid{ grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); }
   /* La barra de botones queda debajo de la diapositiva y no encima: así no tapa el pie
      de la plantilla (logos y líneas). */
   :root{ --barra:calc(56px + env(safe-area-inset-bottom,0px)); --alto:calc(100vh - var(--barra)); }
