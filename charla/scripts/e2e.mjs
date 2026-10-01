@@ -125,6 +125,7 @@ try {
       '--var', `PRESENTER_TOKEN:${TOKEN}`,
       '--var', 'ANTHROPIC_API_KEY:sk-ant-prueba',
       '--var', `ANTHROPIC_BASE_URL:${sim.base}`,
+      '--var', 'ANTHROPIC_WORKSPACE_ID:wrkspc_prueba',
       '--var', `NCBI_BASE_URL:${sim.base}/entrez/eutils`,
       '--var', `EVIDENTIA_URL:${sim.base}`,
     ],
@@ -211,7 +212,7 @@ try {
     cookie = sc.split(';')[0];
     const p = await get('/presentador', { headers: { cookie } });
     const html = await p.text();
-    comprobar(p.status === 200 && (html.match(/<section class="slide/g) ?? []).length === 19, '/presentador con sesión: 19 diapositivas');
+    comprobar(p.status === 200 && (html.match(/<section class="slide/g) ?? []).length === 18, '/presentador con sesión: 18 diapositivas');
     comprobar((p.headers.get('content-security-policy') ?? '').includes("'sha256-"), '/presentador con CSP por hash');
     comprobar(p.headers.get('x-charla-pagina') === 'presentador' && (p.headers.get('cache-control') ?? '').includes('no-store') && (p.headers.get('cache-control') ?? '').includes('no-transform'), '/presentador marcada, sin caché y con no-transform');
     comprobar((p.headers.get('set-cookie') ?? '').startsWith('presentador-local='), 'abrir /presentador con sesión la renueva (cookie fresca)');
@@ -237,6 +238,7 @@ try {
     const ll = reg.claude[0];
     comprobar(ll && ll.apiKey === 'sk-ant-prueba' && ll.model === 'claude-sonnet-5' && ll.stream === true, 'la llamada usa la clave del servidor y claude-sonnet-5 en streaming');
     comprobar(ll && ll.tools === null && ll.system === null, 'sin herramientas ni prompt de sistema');
+    comprobar(ll && ll.workspace === 'wrkspc_prueba', 'con la cabecera del espacio de trabajo cuando ANTHROPIC_WORKSPACE_ID está definido');
     comprobar(ll && String(ll.prompt).includes('Resuma') && String(ll.prompt).includes('Lindqvist HM'), 'el prompt es el fijo del servidor sobre la referencia 1');
     const est = await (await get('/api/sala/estado')).json();
     const ct = est.eventos.filter((e) => e.tipo === 'claude_texto');
@@ -808,7 +810,7 @@ try {
     await pres.fill('#token', TOKEN);
     await Promise.all([pres.waitForNavigation(), pres.click('button[type="submit"]')]);
     await pres.waitForSelector('.slide.active');
-    comprobar((await pres.$$('.slide')).length === 19, 'entra con el token y ve 19 diapositivas');
+    comprobar((await pres.$$('.slide')).length === 18, 'entra con el token y ve 18 diapositivas');
     comprobar((await pres.$$('.qr')).length === 2, 'el QR está en la portada y en el cierre');
     await pres.keyboard.press('ArrowRight');
     await pres.keyboard.press('ArrowRight');
@@ -929,6 +931,12 @@ try {
     comprobar(resaltado !== null && (await tel.getAttribute('#diapo-paso-enlace', 'href')) === '#pasos', 'en la diapositiva 9 se resalta el mapa y el atajo lleva a él');
     const diag = await tel.evaluate(() => ({ n: document.getElementById('diapo-n')?.textContent, pasos: document.getElementById('pasos').hidden, kit: document.getElementById('kit-prompts').hidden, resaltado: document.getElementById('pasos').classList.contains('resaltado') }));
     comprobar(!(await oculto(tel, '#pasos')) && !(await oculto(tel, '#kit-prompts')), `y desde ahí se ven el mapa y su atajo en el kit ${JSON.stringify(diag)}`);
+    const mailto = (await tel.getAttribute('#kit-enviar', 'href')) ?? '';
+    const cuerpoKit = decodeURIComponent(mailto.replace(/^mailto:\?subject=[^&]*&body=/, ''));
+    comprobar(
+      mailto.startsWith('mailto:?subject=') && cuerpoKit.includes(datosVivo.pasos[0].prompt) && cuerpoKit.includes(datosVivo.pasos[6].prompt) && cuerpoKit.includes('CUATRO LÍNEAS ROJAS') && !/Lindqvist|Hayden|Moreau/.test(cuerpoKit),
+      'el botón «Enviarme el kit por correo» abre un mailto con los siete prompts y las líneas rojas, sin las referencias del ejercicio',
+    );
     await diapositiva(10);
     const actual = await tel.waitForSelector('#paso-1.actual', { timeout: 5000 }).catch(() => null);
     const paso1 = await tel.$eval('#paso-1', (d) => ({ abierto: d.open, marca: d.querySelector('.paso-marca')?.textContent }));
@@ -948,6 +956,19 @@ try {
     await diapositiva(11);
     await tel.waitForSelector('#paso-2.actual', { timeout: 5000 }).catch(() => {});
     comprobar(await tel.$eval('#paso-1', (d) => d.classList.contains('visto') && !d.classList.contains('actual') && !d.open), 'con la 11, el paso 01 queda como visto y se cierra solo');
+    await diapositiva(14);
+    await tel.waitForSelector('#paso-7.actual', { timeout: 5000 }).catch(() => {});
+    comprobar(
+      (await tel.$$('#mapa-pasos details.actual')).length === 3 && (await texto(tel, '#diapo-paso-enlace')) === 'Ver los pasos 05 a 07 en el mapa y copiar sus prompts',
+      'la diapositiva 14 pone en pantalla los pasos 05 a 07 y el atajo los nombra',
+    );
+    if (process.env.CHARLA_CAPTURAS) {
+      await pres.screenshot({ path: path.join(process.env.CHARLA_CAPTURAS, 'diapositiva-14-pasos.png') });
+      await diapositiva(17);
+      await pres.screenshot({ path: path.join(process.env.CHARLA_CAPTURAS, 'diapositiva-17-semana.png') });
+    }
+    await diapositiva(3);
+    await tel.waitForFunction(() => document.getElementById('diapo-n')?.textContent === '3', null, { timeout: 5000 }).catch(() => {});
 
     // ------------------------------------------------ la votación desde el panel
     // La sala se reinició por la API y no desde este panel, que aún cree que el público
@@ -1080,6 +1101,19 @@ try {
       `ref. 2: «${votos[1]?.cifra}»`,
     );
     comprobar(votos[0]?.propio === 'Su voto: no existe · acertó' && votos[1]?.propio === 'Su voto: sí existe · acertó', 'cada quien ve si acertó');
+    const acierto = await esperar(async () => ((await tel.$('#votacion-acierto:not([hidden])')) ? await texto(tel, '#votacion-acierto') : null), 5000);
+    comprobar(acierto === 'Usted acertó 2 de 2. Votó 2 de las 5.', `y su cuenta al cerrar: «${acierto}»`);
+    const ahora = await texto(tel, '#ahora');
+    comprobar(!(await oculto(tel, '#ahora')) && ahora === 'PubMed ya verificó las cinco. Compare con su voto.', `el marcador «Ahora» del celular dice qué pasa en la tarima: «${ahora}»`);
+    // La pantalla grande: junto al veredicto, cuánta gente creyó que existía.
+    const publico = await esperar(async () => {
+      const t = await pres.$$eval('#refs .verdict .publico', (l) => l.map((x) => x.textContent));
+      return t.length === 2 ? t : null;
+    }, 10_000, 250);
+    comprobar(
+      publico?.[0] === ' · El 0 % del público creyó que existía (1 voto)' && publico?.[1] === ' · El 100 % del público creyó que existía (1 voto)',
+      `la diapositiva 3 muestra el porcentaje del público junto al veredicto (${JSON.stringify(publico)})`,
+    );
 
     const refs = await tel.$$eval('#refs > li', (lis) =>
       lis.map((li) => ({

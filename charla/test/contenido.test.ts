@@ -77,10 +77,10 @@ describe('el prompt fijo', () => {
 });
 
 describe('las diapositivas', () => {
-  it('son 19 y cada título coincide con el encabezado de su diapositiva', () => {
+  it('son 18 y cada título coincide con el encabezado de su diapositiva', () => {
     const secciones = seccionesDe(BASE);
-    expect(secciones).toHaveLength(19);
-    expect(DIAPOSITIVAS).toHaveLength(19);
+    expect(secciones).toHaveLength(18);
+    expect(DIAPOSITIVAS).toHaveLength(18);
     secciones.forEach((s, i) => {
       const h = /<h[12][^>]*>([\s\S]*?)<\/h[12]>/.exec(s);
       if (i === 2) {
@@ -176,8 +176,8 @@ describe('el contenido del kit', () => {
     contenido.kit.prompts.forEach((p, i) => expect(p.startsWith(`Paso 0${i + 1} ·`)).toBe(true));
   });
 
-  it('las líneas rojas son las de la diapositiva 17, textuales', () => {
-    const s17 = seccionesDe(BASE)[16]!;
+  it('las líneas rojas son las de la diapositiva 15, textuales', () => {
+    const s17 = seccionesDe(BASE)[14]!;
     for (const l of contenido.kit.lineasRojas) {
       expect(textoPlano(s17)).toContain(l.titulo);
       expect(textoPlano(s17)).toContain(l.texto);

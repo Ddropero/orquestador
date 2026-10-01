@@ -411,6 +411,7 @@ export class Sala extends DurableObject<Env> {
       const r = await generarResumen({
         apiKey: this.env.ANTHROPIC_API_KEY,
         ...(this.env.ANTHROPIC_BASE_URL ? { baseURL: this.env.ANTHROPIC_BASE_URL } : {}),
+        ...(this.env.ANTHROPIC_WORKSPACE_ID ? { workspaceId: this.env.ANTHROPIC_WORKSPACE_ID } : {}),
         modelo: CONFIG.modelo,
         prompt: promptResumen(),
         signal: control.signal,
@@ -648,6 +649,7 @@ export class Sala extends DurableObject<Env> {
       const r = await generarResumen({
         apiKey: this.env.ANTHROPIC_API_KEY,
         ...(this.env.ANTHROPIC_BASE_URL ? { baseURL: this.env.ANTHROPIC_BASE_URL } : {}),
+        ...(this.env.ANTHROPIC_WORKSPACE_ID ? { workspaceId: this.env.ANTHROPIC_WORKSPACE_ID } : {}),
         modelo: CONFIG.modelo,
         prompt: promptChat(CHAT.instruccion, CHAT.pregunta, articulos),
         signal: control.signal,

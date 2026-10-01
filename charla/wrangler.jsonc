@@ -50,7 +50,8 @@
     "CONTACT_EMAIL": "david@davidduque.com"
   },
 
-  // Secretos (NO van aquí): ANTHROPIC_API_KEY, PRESENTER_TOKEN y, opcional, NCBI_API_KEY.
+  // Secretos (NO van aquí): ANTHROPIC_API_KEY, PRESENTER_TOKEN y, opcionales, NCBI_API_KEY y
+  // ANTHROPIC_WORKSPACE_ID (solo si la clave de Anthropic no pertenece a un espacio de trabajo).
   //   npx wrangler secret put ANTHROPIC_API_KEY
   //   npx wrangler secret put PRESENTER_TOKEN
 

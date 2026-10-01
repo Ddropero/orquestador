@@ -232,6 +232,36 @@
     }).join(" · ");
   }
 
+  // Totales finales de la votación cerrada, por referencia: {ref: {si, no}}. Llegan con
+  // el estado del panel y se pintan junto al veredicto en la pantalla grande.
+  var conteosPublico = {};
+
+  /** «· El 71 % del público creyó que existía (24 votos)», al final del veredicto. */
+  function anexarPublico(ref){
+    var c = celda(ref);
+    if (!c || !/\b(ok|no)\b/.test(c.className)) return;
+    var viejo = c.querySelector(".publico");
+    if (viejo) viejo.parentNode.removeChild(viejo);
+    var t = conteosPublico[ref];
+    var votos = t ? t.si + t.no : 0;
+    if (!votos) return;
+    var pct = Math.round(t.si * 100 / votos);
+    var s = document.createElement("span");
+    s.className = "publico";
+    s.textContent = " · El " + pct + " % del público creyó que existía (" + votos + (votos === 1 ? " voto)" : " votos)");
+    c.appendChild(s);
+  }
+
+  function guardarConteosPublico(conteos){
+    var nuevos = {};
+    conteos.forEach(function(x){
+      var si = Number(x.si) || 0, no = Number(x.no) || 0;
+      if (x.ref >= 1 && x.ref <= REFS.length) nuevos[x.ref] = { si: si, no: no };
+    });
+    conteosPublico = nuevos;
+    REFS.forEach(function(_r, k){ anexarPublico(k + 1); });
+  }
+
   function pintarVeredicto(ref, existe, pmid, consultas, ensayo){
     var c = celda(ref);
     if (!c) return;
@@ -259,6 +289,7 @@
       e.textContent = " · " + etiquetaEnsayoPubmed();
       c.appendChild(e);
     }
+    anexarPublico(ref);
   }
 
   function pintarRespaldoPubmed(ref){
@@ -634,6 +665,7 @@
     var abierta = v.estado === "abierta";
     if (abierta && abiertaDesde.ronda !== v.ronda) abiertaDesde = { ronda: v.ronda, ts: Date.now() };
     lineas.push(abierta ? "Abierta · ronda " + v.ronda : "Cerrada · ronda " + v.ronda + " · totales finales");
+    if (!abierta && Array.isArray(v.conteos)) guardarConteosPublico(v.conteos);
     if (Array.isArray(v.conteos)) {
       var total = 0;
       v.conteos.forEach(function(c){

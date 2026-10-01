@@ -64,6 +64,10 @@
   .tools{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
   .tools span{ font-size:clamp(11px,1.4vw,15px); color:var(--ink); background:#EAE3D3; border-radius:999px; padding:5px 14px; }
   .tools em{ font-style:normal; font-size:clamp(11px,1.4vw,15px); color:var(--soft); }
+  .tres-pasos .card p{ font-size:clamp(12px,1.55vw,19px); line-height:1.35; }
+  .tres-pasos .card h3{ font-size:clamp(15px,2vw,26px); }
+  .tres-pasos .propone{ color:var(--gold); }
+  .tres-pasos .verifica{ color:var(--ink); }
   .two{ display:grid; gap:clamp(10px,1.6vw,22px); grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); }
   .box-dark{ background:var(--deep); color:var(--deep-ink); border-radius:14px; padding:clamp(14px,1.9vw,28px);
     display:flex; flex-direction:column; gap:.5em; }
@@ -122,7 +126,7 @@
     </section>
 
     <!-- 2 -->
-    <section class="slide" data-notes="<b>0:30–1:00.</b> Anuncie el ejercicio y diga en voz alta que la lista se generó a propósito para imitar a un chatbot sin acceso a bases de datos. La lección no cambia: el patrón es el mismo.">
+    <section class="slide" data-notes="<b>0:30–1:00.</b> Abra con una pregunta al auditorio: «Levante la mano si alguna vez le pidió referencias a un chatbot». Espere las manos y siga. Anuncie el ejercicio y diga en voz alta que la lista se generó a propósito para imitar a un chatbot sin acceso a bases de datos. La lección no cambia: el patrón es el mismo.">
       <p class="eyebrow">Demostración en vivo · 1 de 3</p>
       <h2 class="ink">¿Cuáles de estas cinco existen?</h2>
       <div class="grid">
@@ -261,43 +265,34 @@
     </section>
 
     <!-- 14 -->
-    <section class="slide" data-notes="<b>12:45–13:30.</b> El orden importa: primero escribe el autor, después la IA revisa. Si el borrador lo escribe la IA, en la entrevista no lo va a poder defender.">
-      <p class="eyebrow">Paso 05 de 07 · Escritura</p>
-      <h2 class="ink">Escribir primero, pulir después</h2>
-      <div class="two">
-        <div class="box-dark"><p class="eyebrow">La IA propone</p><p>Revisa su borrador contra la guía que corresponde, señala los vacíos y mejora el inglés.</p></div>
-        <div class="card"><p class="eyebrow">Usted verifica</p><p>Escribe el primer borrador. Las ideas, los datos y las conclusiones son suyos.</p></div>
+    <section class="slide" id="pasos-finales" data-notes="<b>12:45–14:15.</b> Tres pasos en una: escribe primero el autor y la IA revisa después; la revista se confirma en la página oficial del índice, nunca en la de la revista; y ante los revisores la IA ordena, pero el tono y los argumentos los decide el autor. Si el tiempo alcanza, cuente una revista depredadora que conozca.">
+      <p class="eyebrow">Pasos 05, 06 y 07 de 07 · Escritura, revista y revisores</p>
+      <h2 class="ink">Escribir, publicar y responder</h2>
+      <div class="grid tres-pasos">
+        <div class="card">
+          <p class="eyebrow">05 · Escritura</p>
+          <h3 class="ink">Escribir primero, pulir después</h3>
+          <p><b class="propone">La IA propone:</b> Revisa su borrador contra la guía que corresponde, señala los vacíos y mejora el inglés.</p>
+          <p><b class="verifica">Usted verifica:</b> Escribe el primer borrador. Las ideas, los datos y las conclusiones son suyos.</p>
+        </div>
+        <div class="card">
+          <p class="eyebrow">06 · Revista</p>
+          <h3 class="ink">Elegir revista sin caer en trampas</h3>
+          <p><b class="propone">La IA propone:</b> Compara el alcance, los requisitos y el costo de publicación de varias revistas candidatas.</p>
+          <p><b class="verifica">Usted verifica:</b> Confirma la indexación en la fuente oficial y descarta las revistas depredadoras.</p>
+        </div>
+        <div class="card">
+          <p class="eyebrow">07 · Revisores</p>
+          <h3 class="ink">Responder a los revisores</h3>
+          <p><b class="propone">La IA propone:</b> Ordena los comentarios en una tabla punto por punto y propone borradores de respuesta.</p>
+          <p><b class="verifica">Usted verifica:</b> Decide qué acepta y qué refuta, con argumentos y con referencias que sí leyó.</p>
+        </div>
       </div>
-      <p><b style="color:var(--gold)">En el caso guía:</b> «Revise mi manuscrito contra PRISMA y dígame qué ítems faltan y dónde».</p>
-      <div class="tools"><em>Herramientas:</em><span>Red EQUATOR</span><span>CARE</span><span>STROBE</span><span>PRISMA</span></div>
+      <div class="tools"><em>Herramientas:</em><span>Red EQUATOR</span><span>CARE · STROBE · PRISMA</span><span>Scimago</span><span>Scopus</span><span>Publindex</span><span>Think. Check. Submit.</span></div>
     </section>
 
     <!-- 15 -->
-    <section class="slide" data-notes="<b>13:30–14:15.</b> Una publicación en una revista depredadora puede restar en lugar de sumar. Pida que siempre confirmen la indexación en la página oficial del índice, no en la de la revista.">
-      <p class="eyebrow">Paso 06 de 07 · Revista</p>
-      <h2 class="ink">Elegir revista sin caer en trampas</h2>
-      <div class="two">
-        <div class="box-dark"><p class="eyebrow">La IA propone</p><p>Compara el alcance, los requisitos y el costo de publicación de varias revistas candidatas.</p></div>
-        <div class="card"><p class="eyebrow">Usted verifica</p><p>Confirma la indexación en la fuente oficial y descarta las revistas depredadoras.</p></div>
-      </div>
-      <p><b style="color:var(--gold)">Señales de alarma:</b> lo invitan por correo, prometen aceptarlo en días y cobran sin revisión real.</p>
-      <div class="tools"><em>Herramientas:</em><span>Scimago</span><span>Scopus</span><span>Publindex</span><span>Think. Check. Submit.</span></div>
-    </section>
-
-    <!-- 16 -->
-    <section class="slide" data-notes="<b>14:15–15:00.</b> Los rechazos y las revisiones mayores son parte del proceso. La IA ahorra horas organizando la respuesta, pero el tono y los argumentos los decide el autor.">
-      <p class="eyebrow">Paso 07 de 07 · Revisores</p>
-      <h2 class="ink">Responder a los revisores</h2>
-      <div class="two">
-        <div class="box-dark"><p class="eyebrow">La IA propone</p><p>Ordena los comentarios en una tabla punto por punto y propone borradores de respuesta.</p></div>
-        <div class="card"><p class="eyebrow">Usted verifica</p><p>Decide qué acepta y qué refuta, con argumentos y con referencias que sí leyó.</p></div>
-      </div>
-      <p><b style="color:var(--gold)">Regla:</b> si un revisor señala una limitación real, se reconoce en el manuscrito; no se maquilla.</p>
-      <div class="tools"><em>Herramientas:</em><span>Claude</span><span>ChatGPT</span></div>
-    </section>
-
-    <!-- 17 -->
-    <section class="slide dark" data-notes="<b>15:00–17:15.</b> En cirugía plástica las fotos son el punto más sensible: nunca se suben fotos identificables a una herramienta abierta y siempre debe haber consentimiento específico para publicarlas.">
+    <section class="slide dark" data-notes="<b>14:15–16:15.</b> En cirugía plástica las fotos son el punto más sensible: nunca se suben fotos identificables a una herramienta abierta y siempre debe haber consentimiento específico para publicarlas.">
       <p class="eyebrow">Lo que no se negocia</p>
       <h2 class="ink">Cuatro líneas rojas</h2>
       <div class="grid">
@@ -308,15 +303,26 @@
       </div>
     </section>
 
-    <!-- 18 -->
-    <section class="slide dark" data-notes="<b>17:15–18:00.</b> Haga una pausa antes de leerla. La IA es la mejor herramienta que han tenido para investigar, siempre que cada paso pase por su criterio.">
+    <!-- 16 -->
+    <section class="slide dark" data-notes="<b>16:15–17:00.</b> Haga una pausa antes de leerla. La IA es la mejor herramienta que han tenido para investigar, siempre que cada paso pase por su criterio.">
       <hr class="rule">
       <h1 class="ink">La IA acelera.</h1>
       <h2 style="color:var(--glow)">El criterio sigue siendo suyo.</h2>
     </section>
 
-    <!-- 19 -->
-    <section class="slide" data-notes="<b>18:00–20:00.</b> Deje esta diapositiva en pantalla mientras responde preguntas. Si el tiempo está justo, acorte la votación de la demostración inicial.">
+    <!-- 17 -->
+    <section class="slide" id="esta-semana" data-notes="<b>17:00–17:45.</b> Una tarea concreta y pequeña, para que la charla no se quede en la sala. Pida que la hagan antes del viernes: una duda de la rotación, el PICO con el prompt del paso 01 y la búsqueda en PubMed. Quien abra un artículo esta semana ya empezó.">
+      <p class="eyebrow">Antes de irse</p>
+      <h2 class="ink">Esta semana</h2>
+      <div class="grid">
+        <div class="card"><h3 class="ink">1. Una duda</h3><p>Escoja una duda real de su rotación: una sola, la que más lo intrigue.</p></div>
+        <div class="card"><h3 class="ink">2. El PICO</h3><p>Hágale la pregunta PICO con el prompt del paso 01, que ya tiene en el celular.</p></div>
+        <div class="card"><h3 class="ink">3. PubMed</h3><p>Búsquela en PubMed y abra un artículo de verdad. Con eso ya empezó.</p></div>
+      </div>
+    </section>
+
+    <!-- 18 -->
+    <section class="slide" data-notes="<b>17:45–20:00.</b> Deje esta diapositiva en pantalla mientras responde preguntas. Si el tiempo está justo, acorte la votación de la demostración inicial.">
       <p class="eyebrow">Para llevar</p>
       <h2 class="ink">Llévese el kit</h2>
       <ul>

@@ -7,7 +7,7 @@ Un solo Worker de Cloudflare sirve tres cosas:
 
 | Ruta | Quién | Qué |
 |---|---|---|
-| `/presentador` | El ponente, con token | Las 19 diapositivas, los botones de las demos y un panel de controles. |
+| `/presentador` | El ponente, con token | Las 18 diapositivas, los botones de las demos y un panel de controles. |
 | `/vivo` | El público, desde el QR | Solo lectura: la diapositiva actual, lo que hace la IA paso a paso y el kit para llevar. |
 | `/api/...` | Ver `src/index.ts` | Las demos (Claude, PubMed, el chat con PubMed, Evidentia) y la sala. Todo lo que cuesta dinero exige el token. |
 
@@ -60,6 +60,7 @@ npx wrangler login
 npx wrangler secret put PRESENTER_TOKEN     # 5 o más letras y dígitos al azar (ver abajo)
 npx wrangler secret put ANTHROPIC_API_KEY
 npx wrangler secret put NCBI_API_KEY        # opcional: 10 peticiones/s en vez de 3
+npx wrangler secret put ANTHROPIC_WORKSPACE_ID  # solo si la clave de Anthropic se creó fuera de un espacio de trabajo (la API responde 400 sin esta cabecera)
 CHARLA_SIN_RESPALDOS=1 npm run deploy       # el primer despliegue, antes de grabar los respaldos
 node scripts/preflight.mjs https://charla.davidduque.com
 ```

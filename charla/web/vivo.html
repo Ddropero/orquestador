@@ -19,6 +19,7 @@
 
 <main>
   <section class="tarjeta" id="diapositiva" aria-live="polite">
+    <p class="ahora" id="ahora" role="status" hidden></p>
     <p class="eyebrow">Diapositiva actual</p>
     <p class="diapo"><b id="diapo-n">–</b> <span id="diapo-total"></span></p>
     <p class="diapo-titulo" id="diapo-titulo">La charla todavía no ha empezado.</p>
@@ -30,6 +31,7 @@
     <p class="nota" id="votacion-estado"></p>
     <ol class="votos" id="votos-lista"></ol>
     <p class="participacion" id="votacion-participacion"></p>
+    <p class="acierto" id="votacion-acierto" hidden></p>
     <p class="mensaje-voto" id="votacion-mensaje" role="status" aria-live="polite"></p>
   </section>
 
@@ -114,6 +116,12 @@
     <div id="kit-prompts" hidden>
       <h3>Prompts para cada paso</h3>
       <p class="nota-kit">Están en el <a href="#pasos">mapa de los siete pasos</a>, cada uno con su botón para copiarlo.</p>
+      <div class="copiar-fila kit-fila">
+        <a class="copiar enlace-boton" id="kit-enviar" href="#kit">Enviarme el kit por correo</a>
+        <button class="copiar" id="kit-copiar" type="button">Copiar todo el kit</button>
+        <span class="copiado" id="kit-copiado" role="status" aria-live="polite"></span>
+      </div>
+      <p class="nota-kit">El correo se abre en su propio programa de correo, con los siete prompts, las líneas rojas y las guías. Esta página no envía nada.</p>
     </div>
   </section>
 </main>
