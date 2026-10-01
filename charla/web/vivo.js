@@ -575,8 +575,8 @@
   /** Los textos que nombran la referencia resumida salen de los datos, no del HTML: si cambia, no mienten. */
   function textosResumen(){
     var n = DATOS.refResumen;
-    texto($("resumen-sello"), "Texto generado por IA sin verificar · Ejercicio docente: resume la referencia " + n + " de la lista, por verificar en PubMed · No es evidencia clínica");
-    texto($("resumen-veredicto"), "La referencia " + n + " no existe: este resumen describe un artículo inventado.");
+    texto($("resumen-sello"), "Texto generado por IA sin verificar y sin buscar en ninguna base de datos · Ejercicio docente: se le pidió el resumen de la referencia " + n + " de la lista · No es evidencia clínica");
+    texto($("resumen-veredicto"), "La referencia " + n + " no existe. Con cautela o sin ella, el modelo no lo podía saber sin buscar: lo decidió PubMed.");
   }
 
   function textoBusquedaCorto(c){
@@ -616,9 +616,9 @@
     marcar(titular, "falso", !v.existe);
     texto(titular, v.existe
       ? "El artículo existe: compare el resumen del modelo con el original antes de darlo por bueno."
-      : "El modelo resumió con seguridad un artículo que no existe.");
+      : "El modelo, sin buscar, no podía saber si este artículo existe. PubMed sí: no existe.");
     // Solo el número: la cita (y su etiqueta si es fabricada) está en la lista de referencias.
-    detalle.appendChild(el("p", "col-ref", "Referencia " + n + ", la que resumió el modelo"));
+    detalle.appendChild(el("p", "col-ref", "Referencia " + n + ", la que se le pidió al modelo"));
     if (v.existe && pmidValido(v.pmid)) {
       var s = el("p", "veredicto si", "Existe en PubMed · PMID ");
       var a = enlaceExterno(el("a", null, v.pmid));
@@ -1090,7 +1090,7 @@
   }
 
   var TEMAS = {
-    resumen: "Claude resume la referencia " + DATOS.refResumen + " sin buscar en ninguna base de datos",
+    resumen: "Se le pide a Claude el resumen de la referencia " + DATOS.refResumen + " sin buscar en ninguna base de datos",
     verificacion: "Verificación de las cinco referencias en PubMed",
     evidentia: "Evidentia busca y verifica la pregunta de la miel",
     chat: "el mismo chat, ahora con PubMed"

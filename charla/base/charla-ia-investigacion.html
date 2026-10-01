@@ -131,17 +131,17 @@
       <h2 class="ink">¿Cuáles de estas cinco existen?</h2>
       <div class="grid">
         <div class="card"><h3 class="ink">1. Una IA propone</h3><p>Cinco referencias sobre manejo de la gripa en adultos.</p></div>
-        <div class="card"><h3 class="ink">2. Ustedes votan</h3><p>A mano alzada, referencia por referencia.</p></div>
-        <div class="card"><h3 class="ink">3. PubMed decide</h3><p>Búsqueda por título, DOI y autor, en pantalla.</p></div>
+        <div class="card"><h3 class="ink">2. Ustedes votan</h3><p>En el celular, referencia por referencia: ¿existe o no?</p></div>
+        <div class="card"><h3 class="ink">3. PubMed decide</h3><p>Ni ustedes ni el chatbot lo pueden saber sin buscar. PubMed sí.</p></div>
       </div>
     </section>
 
     <!-- 3 DEMO -->
-    <section class="slide" id="demo" data-notes="<b>1:00–3:00.</b> Lea las cinco y pida manos por cada una. Luego use el primer botón: el modelo responde sin búsqueda y el público ve qué hace con un artículo que no existe. Después el segundo botón: verificación real contra PubMed. Si algo falla, quedan las capturas del ensayo.">
+    <section class="slide" id="demo" data-notes="<b>1:00–3:00.</b> Lea las cinco y pida manos por cada una. Luego el primer botón: le pedimos al modelo el resumen de la n.º 1 sin dejarlo buscar. Un modelo actual suele reconocer que no puede confirmar que el artículo exista y pide verificarlo; uno más viejo, o un chatbot sin esa cautela, lo resume con toda seguridad. Lea en voz alta lo que responda y pregunte: ¿y eso les dice si existe? No. Sin buscar, el modelo no lo puede saber: ni el prudente ni el seguro. Después el segundo botón: PubMed decide. Si algo falla, quedan las capturas del ensayo.">
       <p class="eyebrow">Referencias sobre: manejo de la gripa (influenza) en adultos</p>
       <ol class="refs" id="refs"></ol>
       <div class="actions">
-        <button id="btn-sample" disabled>Pedirle a Claude el resumen de la n.º 1</button>
+        <button id="btn-sample" disabled>Pedirle a Claude el resumen de la n.º 1, sin buscar</button>
         <button id="btn-verify" class="ghost" disabled>Verificar las cinco en PubMed</button>
       </div>
       <div class="stack" id="sample-wrap" hidden>

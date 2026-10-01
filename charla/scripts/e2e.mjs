@@ -1182,7 +1182,7 @@ try {
       };
     });
     comprobar(
-      comparacion.lado && comparacion.pubmed && comparacion.falso && comparacion.veredicto && comparacion.titular === 'El modelo resumió con seguridad un artículo que no existe.',
+      comparacion.lado && comparacion.pubmed && comparacion.falso && comparacion.veredicto && comparacion.titular === 'El modelo, sin buscar, no podía saber si este artículo existe. PubMed sí: no existe.',
       'con el resumen y el veredicto de la ref. 1, aparece la comparación lado a lado',
     );
     comprobar(
