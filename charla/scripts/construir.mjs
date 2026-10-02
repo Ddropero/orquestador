@@ -172,6 +172,10 @@ export function estilosPlantilla(portada, contenido) {
   .tres-pasos .card h3{ font-size:clamp(15px,2vw,28px); }
   .tres-pasos .card{ padding:clamp(10px,1.3vw,22px); gap:.3em; }
   #pasos-finales{ gap:clamp(8px,1.3vh,18px); padding-bottom:calc(var(--alto) * .09); }
+  /* Gobernanza: tres tarjetas con dos frases cada una. */
+  #gobernanza .card p{ font-size:clamp(13px,1.6vw,22px); line-height:1.32; }
+  #gobernanza .card h3{ font-size:clamp(15px,2.1vw,28px); }
+  #gobernanza .card{ padding:clamp(10px,1.4vw,22px); gap:.3em; }
   button{ font-size:clamp(14px,1.7vw,20px); }
   .out{ font-size:clamp(14px,1.8vw,22px); }
   .out-label{ font-size:clamp(11px,1.5vw,17px); }
