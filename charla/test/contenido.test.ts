@@ -77,10 +77,10 @@ describe('el prompt fijo', () => {
 });
 
 describe('las diapositivas', () => {
-  it('son 18 y cada título coincide con el encabezado de su diapositiva', () => {
+  it('son 19 y cada título coincide con el encabezado de su diapositiva', () => {
     const secciones = seccionesDe(BASE);
-    expect(secciones).toHaveLength(18);
-    expect(DIAPOSITIVAS).toHaveLength(18);
+    expect(secciones).toHaveLength(19);
+    expect(DIAPOSITIVAS).toHaveLength(19);
     secciones.forEach((s, i) => {
       const h = /<h[12][^>]*>([\s\S]*?)<\/h[12]>/.exec(s);
       if (i === 2) {

@@ -212,7 +212,7 @@ try {
     cookie = sc.split(';')[0];
     const p = await get('/presentador', { headers: { cookie } });
     const html = await p.text();
-    comprobar(p.status === 200 && (html.match(/<section class="slide/g) ?? []).length === 18, '/presentador con sesión: 18 diapositivas');
+    comprobar(p.status === 200 && (html.match(/<section class="slide/g) ?? []).length === 19, '/presentador con sesión: 19 diapositivas');
     comprobar((p.headers.get('content-security-policy') ?? '').includes("'sha256-"), '/presentador con CSP por hash');
     comprobar(p.headers.get('x-charla-pagina') === 'presentador' && (p.headers.get('cache-control') ?? '').includes('no-store') && (p.headers.get('cache-control') ?? '').includes('no-transform'), '/presentador marcada, sin caché y con no-transform');
     comprobar((p.headers.get('set-cookie') ?? '').startsWith('presentador-local='), 'abrir /presentador con sesión la renueva (cookie fresca)');
@@ -810,7 +810,7 @@ try {
     await pres.fill('#token', TOKEN);
     await Promise.all([pres.waitForNavigation(), pres.click('button[type="submit"]')]);
     await pres.waitForSelector('.slide.active');
-    comprobar((await pres.$$('.slide')).length === 18, 'entra con el token y ve 18 diapositivas');
+    comprobar((await pres.$$('.slide')).length === 19, 'entra con el token y ve 19 diapositivas');
     comprobar((await pres.$$('.qr')).length === 2, 'el QR está en la portada y en el cierre');
     await pres.keyboard.press('ArrowRight');
     await pres.keyboard.press('ArrowRight');
@@ -964,8 +964,10 @@ try {
     );
     if (process.env.CHARLA_CAPTURAS) {
       await pres.screenshot({ path: path.join(process.env.CHARLA_CAPTURAS, 'diapositiva-14-pasos.png') });
-      await diapositiva(17);
-      await pres.screenshot({ path: path.join(process.env.CHARLA_CAPTURAS, 'diapositiva-17-semana.png') });
+      await diapositiva(16);
+      await pres.screenshot({ path: path.join(process.env.CHARLA_CAPTURAS, 'diapositiva-16-gobernanza.png') });
+      await diapositiva(18);
+      await pres.screenshot({ path: path.join(process.env.CHARLA_CAPTURAS, 'diapositiva-18-semana.png') });
     }
     await diapositiva(3);
     await tel.waitForFunction(() => document.getElementById('diapo-n')?.textContent === '3', null, { timeout: 5000 }).catch(() => {});
@@ -1182,7 +1184,7 @@ try {
       };
     });
     comprobar(
-      comparacion.lado && comparacion.pubmed && comparacion.falso && comparacion.veredicto && comparacion.titular === 'El modelo resumió con seguridad un artículo que no existe.',
+      comparacion.lado && comparacion.pubmed && comparacion.falso && comparacion.veredicto && comparacion.titular === 'El modelo, sin buscar, no podía saber si este artículo existe. PubMed sí: no existe.',
       'con el resumen y el veredicto de la ref. 1, aparece la comparación lado a lado',
     );
     comprobar(
